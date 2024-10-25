@@ -1,0 +1,314 @@
+---
+title: "TCGA Cancer Sample Data"
+author: "Britney Pheng"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+    html:
+        fontsize: 14pxs
+        toc: true
+        top-depth: 3
+output: html_document
+editor: visual
+---
+
+# Initial Setup
+
+## Load packages
+```{r packages, warning=FALSE, message=FALSE}
+suppressPackageStartupMessages({
+  # BiocManager
+  library(GenomicSuperSignature)
+  library(curatedTCGAData)
+  library(MultiAssayExperiment)
+  library(TCGAutils)
+  library(ComplexHeatmap)
+  
+  # CRAN
+  library(tidyverse) # includes dplyr, ggplot2, magrittr, tidyr
+  library(magick)
+  library(wordcloud)
+  library(ztable)
+  library(metafolio)
+  library(randomForest)
+  library(caret)
+})
+```
+
+## Load data
+
+### Load RAVmodel
+```{r RAVmodel, warning=FALSE, message=FALSE}
+RAVmodel <- getModel('C2', load=TRUE)
+```
+
+### COAD: Colon adenocarcinoma
+```{r COAD, warning=FALSE, message=FALSE}
+coad <- curatedTCGAData(diseaseCode = 'COAD',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+sampleTables(coad) # Display the sample types (e.g., normal, cancer)
+
+coad2 <- TCGAsplitAssays(coad, c("01", "11"))
+
+coad_rna_cancer <- getWithColData(coad2,
+                           '01_COAD_RNASeq2Gene-20160128')
+
+assay(coad_rna_cancer) <- log2(assay(coad_rna_cancer) + 1)
+
+coad_meta_cancer <- colData(coad_rna_cancer)
+```
+
+```{r}
+save(coad_meta_cancer, file = "TCGA_COAD_cancer_dataset.rda")
+```
+
+```{r}
+validate_coad_cancer <- validate(coad_rna_cancer, RAVmodel)
+validate_coad_cancer <- validate_coad_cancer %>% arrange(desc(score))
+
+heatmapTable(validate_coad_cancer, RAVmodel, num.out=10, column_title="COAD Cancer Samples")
+```
+
+
+### LUAD: Lung adenocarcinoma
+```{r}
+luad <- curatedTCGAData(diseaseCode = 'LUAD',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+luad2 <- TCGAsplitAssays(luad, c("01", "11"))
+
+luad_rna_cancer <- getWithColData(luad2,
+                           '01_LUAD_RNASeq2Gene-20160128')
+
+assay(luad_rna_cancer) <- log2(assay(luad_rna_cancer) + 1)
+
+luad_meta_cancer <- colData(luad_rna_cancer)
+```
+
+```{r}
+save(luad_meta_cancer, file = "TCGA_LUAD_cancer_dataset.rda")
+```
+
+### LUSC: Lung squamous cell carcinoma
+```{r}
+lusc <- curatedTCGAData(diseaseCode = 'LUSC',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+lusc2 <- TCGAsplitAssays(lusc, c("01", "11"))
+
+lusc_rna_cancer <- getWithColData(lusc2,
+                           '01_LUSC_RNASeq2Gene-20160128')
+
+assay(lusc_rna_cancer) <- log2(assay(lusc_rna_cancer) + 1)
+
+lusc_meta_cancer <- colData(lusc_rna_cancer)
+```
+
+```{r}
+save(lusc_meta_cancer, file = "TCGA_LUSC_cancer_dataset.rda")
+```
+
+### BRCA: Breast invasive carcinoma
+```{r}
+brca <- curatedTCGAData(diseaseCode = 'BRCA',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+brca2 <- TCGAsplitAssays(brca, c("01", "11"))
+
+brca_rna_cancer <- getWithColData(brca2,
+                           '01_BRCA_RNASeq2Gene-20160128')
+
+assay(brca_rna_cancer) <- log2(assay(brca_rna_cancer) + 1)
+
+brca_meta_cancer <- colData(brca_rna_cancer)
+```
+
+```{r}
+save(brca_meta_cancer, file = "TCGA_BRCA_cancer_dataset.rda")
+```
+
+### KIRC: Kidney renal clear cell carcinoma
+```{r}
+kirc <- curatedTCGAData(diseaseCode = 'KIRC',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+kirc2 <- TCGAsplitAssays(kirc, c("01", "11"))
+
+kirc_rna_cancer <- getWithColData(kirc2,
+                           '01_KIRC_RNASeq2Gene-20160128')
+
+assay(kirc_rna_cancer) <- log2(assay(kirc_rna_cancer) + 1)
+
+kirc_meta_cancer <- colData(kirc_rna_cancer)
+```
+
+```{r}
+save(kirc_meta_cancer, file = "TCGA_KIRC_cancer_dataset.rda")
+```
+
+### KIRP: Kidney renal papillary cell carcinoma
+```{r}
+kirp <- curatedTCGAData(diseaseCode = 'KIRP',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+kirp2 <- TCGAsplitAssays(kirp, c("01", "11"))
+
+kirp_rna_cancer <- getWithColData(kirp2,
+                           '01_KIRP_RNASeq2Gene-20160128')
+
+assay(kirp_rna_cancer) <- log2(assay(kirp_rna_cancer) + 1)
+
+kirp_meta_cancer <- colData(kirp_rna_cancer)
+```
+
+```{r}
+save(kirp_meta_cancer, file = "TCGA_KIRP_cancer_dataset.rda")
+```
+
+### HNSC: Head and neck squamous cell carcinoma
+```{r}
+hnsc <- curatedTCGAData(diseaseCode = 'HNSC',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+hnsc2 <- TCGAsplitAssays(hnsc, c("01", "11"))
+
+hnsc_rna_cancer <- getWithColData(hnsc2,
+                           '01_HNSC_RNASeq2Gene-20160128')
+
+assay(hnsc_rna_cancer) <- log2(assay(hnsc_rna_cancer) + 1)
+
+hnsc_meta_cancer <- colData(hnsc_rna_cancer)
+```
+
+```{r}
+save(hnsc_meta_cancer, file = "TCGA_HNSC_cancer_dataset.rda")
+```
+
+### UCEC: Uterine corpus endometrial carcinoma
+```{r}
+ucec <- curatedTCGAData(diseaseCode = 'UCEC',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+ucec2 <- TCGAsplitAssays(ucec, c("01", "11"))
+
+ucec_rna_cancer <- getWithColData(ucec2,
+                           '01_UCEC_RNASeq2Gene-20160128')
+
+assay(ucec_rna_cancer) <- log2(assay(ucec_rna_cancer) + 1)
+
+ucec_meta_cancer <- colData(ucec_rna_cancer)
+```
+
+```{r}
+save(ucec_meta_cancer, file = "TCGA_UCEC_cancer_dataset.rda")
+```
+
+### OV: Ovarian serous cystadenocarcinoma
+```{r}
+ov <- curatedTCGAData(diseaseCode = 'OV',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+ov2 <- TCGAsplitAssays(ov, c("01", "11"))
+
+ov_rna_cancer <- getWithColData(ov2,
+                           '01_OV_RNASeq2Gene-20160128')
+
+assay(ov_rna_cancer) <- log2(assay(ov_rna_cancer) + 1)
+
+ov_meta_cancer <- colData(ov_rna_cancer)
+```
+
+```{r}
+save(ov_meta_cancer, file = "TCGA_OV_cancer_dataset.rda")
+```
+
+### PAAD: Pancreatic adenocarcinoma
+```{r}
+paad <- curatedTCGAData(diseaseCode = 'PAAD',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+paad2 <- TCGAsplitAssays(paad, c("01", "11"))
+
+paad_rna_cancer <- getWithColData(paad2,
+                           '01_PAAD_RNASeq2Gene-20160128')
+
+assay(paad_rna_cancer) <- log2(assay(paad_rna_cancer) + 1)
+
+paad_meta_cancer <- colData(paad_rna_cancer)
+```
+
+```{r}
+save(paad_meta_cancer, file = "TCGA_PAAD_cancer_dataset.rda")
+```
+
+### PRAD: Prostate adenocarcinoma
+```{r}
+prad <- curatedTCGAData(diseaseCode = 'PRAD',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+prad2 <- TCGAsplitAssays(prad, c("01", "11"))
+
+prad_rna_cancer <- getWithColData(prad2,
+                           '01_PRAD_RNASeq2Gene-20160128')
+
+assay(prad_rna_cancer) <- log2(assay(prad_rna_cancer) + 1)
+
+prad_meta_cancer <- colData(prad_rna_cancer)
+```
+
+```{r}
+save(prad_meta_cancer, file = "TCGA_PRAD_cancer_dataset.rda")
+```
+
+## Create vector dataset
+```{r}
+TCGA_cancer_validationDatasets <- vector(mode = "list", length = 11)
+names(TCGA_cancer_validationDatasets) <- c("BRCA", "COAD", "HNSC", "KIRC", "KIRP", "LUAD",
+                                    "LUSC", "OV", "PAAD", "PRAD", "UCEC")
+
+TCGA_cancer_validationDatasets[[1]] <- brca_rna_cancer
+TCGA_cancer_validationDatasets[[2]] <- coad_rna_cancer
+TCGA_cancer_validationDatasets[[3]] <- hnsc_rna_cancer
+TCGA_cancer_validationDatasets[[4]] <- kirc_rna_cancer
+TCGA_cancer_validationDatasets[[5]] <- kirp_rna_cancer
+TCGA_cancer_validationDatasets[[6]] <- luad_rna_cancer
+TCGA_cancer_validationDatasets[[7]] <- lusc_rna_cancer
+TCGA_cancer_validationDatasets[[8]] <- ov_rna_cancer
+TCGA_cancer_validationDatasets[[9]] <- paad_rna_cancer
+TCGA_cancer_validationDatasets[[10]] <- prad_rna_cancer
+TCGA_cancer_validationDatasets[[11]] <- ucec_rna_cancer
+
+save(TCGA_cancer_validationDatasets, file = "TCGA_cancer_validationDatasets.rda")
+```
+
+### Validate
+```{r}
+val_all <- validate(TCGA_cancer_validationDatasets, RAVmodel)
+```
+
+```{r}
+heatmapTable(val_all, RAVmodel, num.out=10)
+```
+

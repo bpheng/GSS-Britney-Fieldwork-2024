@@ -1,0 +1,284 @@
+---
+title: "MSI RF Model - TCGA Data"
+author: "Britney Pheng"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+    html:
+        fontsize: 14pxs
+        toc: true
+        top-depth: 3
+output: html_document
+editor: visual
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+suppressPackageStartupMessages({
+  # BiocManager
+  library(GenomicSuperSignature)
+  library(curatedTCGAData)
+  library(MultiAssayExperiment)
+  library(TCGAutils)
+  library(ComplexHeatmap)
+  
+  # CRAN
+  library(tidyverse) # includes dplyr, ggplot2, magrittr, tidyr
+  library(magick)
+  library(wordcloud)
+  library(ztable)
+  library(metafolio)
+  library(randomForest)
+  library(caret)
+})
+```
+
+### Load RAVmodel
+```{r message=FALSE, warning=FALSE}
+RAVmodel <- getModel('C2', load=TRUE)
+```
+
+```{r message=FALSE}
+coad <- curatedTCGAData(diseaseCode = 'COAD',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+sampleTables(coad)
+coad2 <- TCGAsplitAssays(coad, c("01", "11"))
+
+coad_rna_cancer <- getWithColData(coad2,
+                           '01_COAD_RNASeq2Gene-20160128')
+assay(coad_rna_cancer) <- log2(assay(coad_rna_cancer) + 1)
+
+coad_rna_cancer <- coad_rna_cancer[,coad_rna_cancer@colData@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status %in% c('msi-h', 'mss')]
+
+coad_meta_cancer <- colData(coad_rna_cancer)
+```
+
+```{r}
+validate_coad_cancer <- validate(coad_rna_cancer, RAVmodel)
+heatmapTable(validate_coad_cancer, RAVmodel, num.out=15)
+```
+
+```{r}
+# Select columns with >10% completeness
+complete_ind <- which(colSums(!is.na(coad_meta_cancer)) > round(nrow(coad_meta_cancer)/10))
+meta_complete <- coad_meta_cancer[complete_ind] %>% subset (select = -patientID) # remove `patientID`
+```
+
+```{r}
+# Randomly select 70% of samples for training
+set.seed(1)
+num_sample <- ncol(coad_rna_cancer)
+train_sample_ind <- sample(seq_len(num_sample), round(num_sample*0.7))
+
+meta_train <- meta_complete[train_sample_ind,] # 163 samples x 649 metadata attributes
+coad_train <- coad_rna_cancer[, train_sample_ind] # 20,501 genes x 163 samples
+```
+
+Remove batch effect variables from metadata table
+```{r}
+batch_var <- "analyte|portion|procurement|aliquot|uuid|barcode"
+batch_ind <- grep(batch_var, colnames(meta_train))
+meta_train <- meta_train[,-batch_ind] # 163 samples x 246 metadata attributes
+```
+
+```{r}
+meta_test <- meta_complete[-train_sample_ind,-batch_ind] # 70 samples x 246 metadata attributes
+coad_test <- coad_rna_cancer[, -train_sample_ind] # 20,501 genes x 70 samples
+```
+
+## Based on variable types
+```{r}
+## Check for data types in listData
+var_type <- meta_train@listData
+unique(sapply(var_type, type))
+
+## Separate training data's metadata into two subsets: 
+## character variables (~ categorical) and numeric variables (~ continuous)
+charcTb <- meta_train[, sapply(var_type, class) == 'character'] # 163 samples x 160 metadata attributes (char)
+numTb <- meta_train[, sapply(var_type, class) %in% c('numeric', 'integer')] # 163 samples x 74 metadata attributes (num)
+```
+
+## Based on variable types; Test Data
+```{r}
+## Check for data types in listData
+var_type_testdata <- meta_test@listData
+
+## Separate test data's metadata into two subsets: 
+## character variables (~ categorical) and numeric variables (~ continuous)
+charcTb_testdata <- meta_test[, sapply(var_type_testdata, class) == 'character'] # 70 samples x 160 metadata attributes (char)
+numTb_testdata <- meta_test[, sapply(var_type_testdata, class) %in% c('numeric', 'integer')] # 70 samples x 86 metadata attributes (num)
+```
+
+# Sample Score
+```{r}
+## Calculate validation scores
+sampleScore <- calculateScore(coad_train, RAVmodel)
+rownames(sampleScore) <- gsub("\\.", "-", rownames(sampleScore))
+
+## Test data: calculate validation scores
+sampleScore_testdata <- calculateScore(coad_test, RAVmodel)
+rownames(sampleScore_testdata) <- gsub("\\.", "-", rownames(sampleScore_testdata))
+
+```
+
+Sample scores only for the validated RAVs
+```{r}
+## Training Data
+validate_coad <- validate(coad_train, RAVmodel)
+heatmapTable(validate_coad, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_coad, 
+                                     RAVmodel, 
+                                     num.out = 15, 
+                                     scoreCutoff = 0.45, 
+                                     indexOnly = TRUE)
+
+## Subset sampleScore
+sampleScore_sub <- sampleScore[,validated_ind] %>% as.data.frame()
+
+## Test Data
+validate_coad_testdata <- validate(coad_test, RAVmodel)
+heatmapTable(validate_coad_testdata, RAVmodel, num.out = 15)
+
+validated_ind_testdata <- validatedSignatures(validate_coad_testdata, 
+                                     RAVmodel, 
+                                     num.out = 4764, 
+                                     #scoreCutoff = 0.45, 
+                                     indexOnly = TRUE)
+
+## Subset sampleScore
+sampleScore_sub_testdata <- sampleScore_testdata[,validated_ind_testdata] %>% as.data.frame()
+```
+
+```{r}
+# SummarizedExperiment object containing COAD train dataset 
+saveRDS(coad_train, "data/tcga_coad_cancer_train.rds") # 20,501 genes x 226 samples
+
+# Sample scores for the train set (80% of the randomly selected COAD samples)
+# Only the top 15 validated RAVs
+write.csv(sampleScore_sub, "data/sampleScore_train_cancer.csv") # 226samples x 15 RAVs
+
+## Training set's metadata: character and numeric variables
+write.csv(charcTb, "data/meta_train_char_cancer.csv", row.names = TRUE)
+write.csv(numTb, "data/meta_train_num_cancer.csv", row.names = TRUE)
+```
+
+```{r}
+## Convert character variables into the factor data type
+factorTb <- charcTb
+factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor)
+
+levels(factorTb@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)[levels(factorTb@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status) == "msi-h"] <- "msi"
+```
+
+```{r}
+## Convert character variables into the factor data type
+factorTb_testdata <- charcTb_testdata
+factorTb_testdata[sapply(factorTb_testdata, is.character)] <- lapply(factorTb_testdata[sapply(factorTb_testdata, is.character)], factor)
+
+levels(factorTb_testdata@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)[levels(factorTb_testdata@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status) == "msi-h"] <- "msi"
+```
+
+# Prediction models
+## Use top 15 validated RAVs for TCGA-COAD
+```{r}
+#validated_ind
+validated_RAVs <- c("RAV61", "RAV64", "RAV188", "RAV190", "RAV192", 
+                    "RAV220", "RAV324", "RAV438", "RAV833", "RAV834", 
+                    "RAV868", "RAV1008", "RAV1575")
+target_attr <- "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"
+
+labels <- factorTb[[target_attr]]
+nonNALabels <- which(!is.na(labels))
+data <- sampleScore_sub[,validated_RAVs]
+
+train_data <- data[nonNALabels,]
+train_labels <- labels[nonNALabels]
+train_data$MSI_Status <- train_labels
+```
+
+## Random Forest classification model
+```{r}
+rf <- randomForest(MSI_Status~., data=train_data, proximity=TRUE)
+print(rf)
+
+p1 <- predict(rf, train_data)
+#confusionMatrix(p1, train_data$MSI_Status)
+
+confusion_matrix <- table(p1, train_data$MSI_Status)
+confusion_matrix
+
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+print(accuracy)
+
+importance(rf)
+varImpPlot(rf)
+```
+```{r}
+predictions1 <- predict(rf, newdata = train_data, predict.all = TRUE)
+
+tree_predictions <- predictions1$individual  # Extract tree predictions
+
+# Calculate accuracy for each tree (for classification)
+tree_accuracy <- apply(tree_predictions, 2, function(tree_pred) {
+  mean(tree_pred == train_data$MSI_Status)
+})
+
+print(tree_accuracy)
+#sort(tree_accuracy)
+
+# Calculate weights proportional to accuracy
+weights <- tree_accuracy / sum(tree_accuracy)
+
+# Combine predictions using weighted average
+weighted_predictions <- apply(tree_predictions, 1, function(preds) {
+  weighted_pred <- tapply(weights, preds, sum)
+  names(which.max(weighted_pred))
+})
+
+# Convert weighted predictions to factor
+weighted_predictions <- as.factor(weighted_predictions)
+
+confusion_matrix <- table(weighted_predictions, train_data$MSI_Status)
+confusion_matrix
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+#print(accuracy)
+
+
+
+```
+
+## Test Data
+```{r}
+labels <- factorTb_testdata[[target_attr]]
+nonNALabels <- which(!is.na(labels))
+data <- sampleScore_sub_testdata[,validated_RAVs]
+
+test_data <- data[nonNALabels,]
+test_labels <- labels[nonNALabels]
+
+test_data$MSI_Status <- test_labels
+```
+
+```{r}
+p2 <- predict(rf, test_data)
+confusionMatrix(p2, test_data$MSI_Status)
+```
+
+```{r}
+library("rpart")
+library("rpart.plot")
+
+#fit new model with rpart
+train_msi_model <- rpart(MSI_Status ~., data = train_data)
+test_msi_model <- rpart(MSI_Status ~., data = test_data)
+
+# plot the tree
+rpart.plot(train_msi_model)
+```
+
+
+

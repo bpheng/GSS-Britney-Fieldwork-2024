@@ -1,0 +1,169 @@
+---
+title: "MSI Random Forest Model - curatedCRCData"
+author: "Britney Pheng"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+    html:
+        fontsize: 14pxs
+        toc: true
+        top-depth: 3
+output: html_document
+editor: visual
+---
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+# Initial Setup
+
+## Load packages
+
+```{r packages, warning=FALSE, message=FALSE}
+suppressPackageStartupMessages({
+  # BiocManager
+  library(GenomicSuperSignature)
+  library(curatedTCGAData)
+  library(MultiAssayExperiment)
+  library(TCGAutils)
+  library(ComplexHeatmap)
+  library(SummarizedExperiment)
+  library(curatedCRCData)
+  
+  # CRAN
+  library(tidyverse) # includes dplyr, ggplot2, magrittr, tidyr
+  library(magick)
+  library(wordcloud)
+  library(ztable)
+  library(metafolio)
+  library(randomForest)
+  library(caret)
+})
+```
+
+## Load data
+
+```{r}
+train_rf_data <- read.csv("/Users/bpheng/data/meta_train_char_cancer.csv")
+sampleScore_sub <- read.csv("/Users/bpheng/data/sampleScore_train_cancer.csv")
+```
+
+```{r}
+## Convert character variables into the factor data type
+factorTb <- train_rf_data
+factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor)
+
+levels(factorTb$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)[levels(factorTb$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status) == "msi-h"] <- "msi"
+
+#levels(factorTb$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)
+```
+
+# Prediction models
+
+## Use top 15 validated RAVs for TCGA-COAD
+
+```{r}
+validated_RAVs <- c("RAV61", "RAV64", "RAV188", "RAV190", "RAV192", 
+                    "RAV220", "RAV324", "RAV438", "RAV833", "RAV834", 
+                    "RAV868", "RAV1008", "RAV1575")
+target_attr <- "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"
+
+labels <- factorTb[[target_attr]]
+nonNALabels <- which(!is.na(labels))
+data <- sampleScore_sub[,validated_RAVs]
+
+train_data <- data[nonNALabels,]
+train_labels <- labels[nonNALabels]
+train_data$MSI_Status <- train_labels
+```
+
+## Random Forest classification model
+
+```{r}
+rf <- randomForest(MSI_Status~., data=train_data, proximity=TRUE)
+#print(rf)
+```
+
+#curatedCRCData
+
+```{r}
+library(curatedCRCData)
+#data(package="curatedCRCData")
+```
+
+```{r}
+data(GSE13067_eset)
+
+library(SummarizedExperiment)
+
+mySummarizedExperiment <- makeSummarizedExperimentFromExpressionSet(GSE13067_eset)
+assay(mySummarizedExperiment) <- log2(assay(mySummarizedExperiment) + 1)
+
+#mySummarizedExperiment@colData$msi
+mySummarizedExperiment@colData@listData[["msi"]] <- gsub("MSS", "mss", mySummarizedExperiment@colData@listData[["msi"]] )
+mySummarizedExperiment@colData@listData[["msi"]] <- gsub("MSI", "msi", mySummarizedExperiment@colData@listData[["msi"]] )
+
+GSE13067.meta <- colData(mySummarizedExperiment)
+GSE13067.sampleScore <- calculateScore(mySummarizedExperiment, RAVmodel) %>% as.data.frame()
+```
+
+```{r}
+target_attr <- "msi"
+
+var_type <- GSE13067.meta@listData
+unique(sapply(var_type, type))
+charcTb <- GSE13067.meta[, sapply(var_type, class) == 'character']
+factorTb <- charcTb
+factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor)
+
+labels <- factorTb[[target_attr]]
+nonNALabels <- which(!is.na(labels))
+data <- GSE13067.sampleScore[,validated_RAVs]
+
+new_data <- data[nonNALabels,]
+new_labels <- labels[nonNALabels]
+new_data$msi <- new_labels
+```
+
+```{r}
+GSE13067.prediction <- predict(rf, new_data)
+confusionMatrix(GSE13067.prediction, new_data$msi)
+```
+
+Another curatedCRC dataset: GSE13294_eset
+
+```{r}
+data(GSE13294_eset)
+GSE13294_eset <- makeSummarizedExperimentFromExpressionSet(GSE13294_eset)
+assay(GSE13294_eset) <- log2(assay(GSE13294_eset) + 1)
+
+
+GSE13294_eset@colData@listData[["msi"]] <- gsub("MSS", "mss", GSE13294_eset@colData@listData[["msi"]] )
+GSE13294_eset@colData@listData[["msi"]] <- gsub("MSI", "msi", GSE13294_eset@colData@listData[["msi"]] )
+
+GSE13294.meta <- colData(GSE13294_eset)
+GSE13294.sampleScore <- calculateScore(GSE13294_eset, RAVmodel) %>% as.data.frame()
+
+```
+
+```{r}
+target_attr <- "msi"
+
+var_type <- GSE13294.meta@listData
+unique(sapply(var_type, type))
+charcTb <- GSE13294.meta[, sapply(var_type, class) == 'character']
+
+factorTb <- charcTb
+factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor)
+
+labels <- factorTb[[target_attr]]
+nonNALabels <- which(!is.na(labels))
+data <- GSE13294.sampleScore[,validated_RAVs]
+
+new_data <- data[nonNALabels,]
+new_labels <- labels[nonNALabels]
+new_data$msi <- new_labels
+```
+
+```{r}
+GSE13294.prediction <- predict(rf, new_data)
+confusionMatrix(GSE13294.prediction, new_data$msi)
+```
