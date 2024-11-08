@@ -1,0 +1,190 @@
+---
+title: "UCEC Preparation"
+author: "Sehyun Oh, Britney Pheng"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+    html:
+        fontsize: 14pxs
+        toc: true
+        top-depth: 3
+output: html_document
+---
+
+# Initial Setup
+## Load packages
+```{r packages, warning=FALSE, message=FALSE}
+
+suppressPackageStartupMessages({
+  # BiocManager
+  library(GenomicSuperSignature)
+  library(curatedTCGAData)
+  library(MultiAssayExperiment)
+  library(TCGAutils)
+  library(ComplexHeatmap)
+  
+  # CRAN
+  library(tidyverse)
+  library(magick)
+  library(wordcloud)
+  library(ztable)
+  library(metafolio)
+})
+```
+
+## Load RAVmodel
+```{r message=FALSE, warning=FALSE}
+RAVmodel <- getModel('C2', load=TRUE)
+```
+
+## UCEC
+```{r message=FALSE, warning=FALSE}
+ucec <- curatedTCGAData(diseaseCode = 'UCEC',
+                        assays = 'RNA*',
+                        version = '2.1.0',
+                        dry.run = FALSE)
+```
+
+```{r}
+## UCEC RNAseq
+ucec_rna <- getWithColData(ucec,
+                           'UCEC_RNASeq2Gene-20160128', # RSEM TPM gene expression values
+                           mode = 'append')
+
+assay(ucec_rna) <- log2(assay(ucec_rna) + 1) # log-transformed
+
+## UCEC metadata
+ucec_meta <- colData(ucec_rna)
+```
+
+```{r}
+## Parse out cancer vs normal samples
+sampleTables(ucec)
+
+ucec2 <- TCGAsplitAssays(ucec, c("01", "11"))
+
+# Cancer
+ucec_rna_cancer <- getWithColData(ucec2,
+                                  '01_UCEC_RNASeq2Gene-20160128',
+                                  mode = 'append')
+
+assay(ucec_rna_cancer) <- log2(assay(ucec_rna_cancer) + 1)
+ucec_cancer_meta <- colData(ucec_rna_cancer)
+
+
+# Normal
+ucec_rna_normal <- getWithColData(ucec2,
+                                  '11_UCEC_RNASeq2Gene-20160128',
+                                  mode = 'append')
+
+assay(ucec_rna_normal) <- log2(assay(ucec_rna_normal) + 1)
+ucec_normal_meta <- colData(ucec_rna_normal)
+```
+
+```{r}
+## Select columns with >10% completeness
+# Cancer
+keep_attribute_ind <- which(colSums(!is.na(ucec_cancer_meta)) > round(nrow(ucec_cancer_meta)/10))
+ucec_cancer <- ucec_cancer_meta[keep_attribute_ind] %>% subset(select= -patientID)
+saveRDS(ucec_cancer, "data/ucec_cancer.rds")
+
+# Normal
+keep_attribute_ind <- which(colSums(!is.na(ucec_normal_meta)) > round(nrow(ucec_normal_meta)/10))
+ucec_normal <- ucec_normal_meta[keep_attribute_ind] %>% subset(select= -patientID)
+saveRDS(ucec_normal, "data/ucec_normal.rds")
+
+# All
+keep_attribute_ind <- which(colSums(!is.na(ucec_meta)) > round(nrow(ucec_meta)/10))
+ucec_all <- ucec_meta[keep_attribute_ind] %>% subset(select= -patientID)
+saveRDS(ucec_all, "data/ucec_all.rds")
+```
+
+# UCEC Sample Score
+```{r}
+## Calculate validation scores
+ucec_sampleScore <- calculateScore(ucec_rna, RAVmodel)
+rownames(ucec_sampleScore) <- gsub("\\.", "-", rownames(ucec_sampleScore))
+
+ucec_cancer_sampleScore <- calculateScore(ucec_rna_cancer, RAVmodel)
+rownames(ucec_cancer_sampleScore) <- gsub("\\.", "-", rownames(ucec_cancer_sampleScore))
+
+ucec_normal_sampleScore <- calculateScore(ucec_rna_normal, RAVmodel)
+rownames(ucec_normal_sampleScore) <- gsub("\\.", "-", rownames(ucec_normal_sampleScore))
+```
+
+```{r}
+# UCEC All Samples
+## Sample scores only for the validated RAVs
+validate_ucec <- validate(ucec_rna, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_ucec, 
+                                     RAVmodel, 
+                                     num.out = 15, 
+                                     scoreCutoff = 0.45, 
+                                     indexOnly = TRUE)
+
+## Subset sampleScore
+ucec_sampleScore_sub <- ucec_sampleScore[,validated_ind] %>% as.data.frame()
+write.csv(ucec_sampleScore_sub , "data/ucec_all_sampleScore.csv") 
+
+# Cancer
+## Sample scores only for the validated RAVs
+validate_ucec <- validate(ucec_rna_cancer, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_ucec, 
+                                     RAVmodel, 
+                                     num.out = 15, 
+                                     scoreCutoff = 0.45, 
+                                     indexOnly = TRUE)
+
+## Subset sampleScore
+ucec_cancer_sampleScore_sub <- ucec_cancer_sampleScore[,validated_ind] %>% as.data.frame()
+write.csv(ucec_cancer_sampleScore_sub , "data/ucec_cancer_sampleScore.csv") 
+
+
+# Normal
+## Sample scores only for the validated RAVs
+validate_ucec <- validate(ucec_rna_normal, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_ucec, 
+                                     RAVmodel, 
+                                     num.out = 15, 
+                                     scoreCutoff = 0.45, 
+                                     indexOnly = TRUE)
+
+## Subset sampleScore
+ucec_normal_sampleScore_sub <- ucec_normal_sampleScore[,validated_ind] %>% as.data.frame()
+write.csv(ucec_normal_sampleScore_sub , "data/ucec_normal_sampleScore.csv") 
+```
+
+## Categorical and Numeric Variables
+## Based on variable types
+```{r}
+## Separate COAL All into two subsets: 
+charcTb <- ucec_all[, sapply(ucec_all@listData, class) == 'character']
+numTb <- ucec_all[, sapply(ucec_all@listData, class) %in% c('numeric', 'integer')]
+write.csv(charcTb, "data/ucec_all_char.csv", row.names = TRUE)
+write.csv(numTb, "data/ucec_all_num.csv", row.names = TRUE)
+
+## Separate UCEC Cancer into two subsets: 
+charcTb <- ucec_cancer[, sapply(ucec_cancer@listData, class) == 'character'] # 374 metadata attributes (char)
+numTb <- ucec_cancer[, sapply(ucec_cancer@listData, class) %in% c('numeric', 'integer')] # 283 samples x 328 metadata attributes (num)
+write.csv(charcTb, "data/ucec_cancer_char.csv", row.names = TRUE)
+write.csv(numTb, "data/ucec_cancer_num.csv", row.names = TRUE)
+
+## Separate UCEC Normal into two subsets: 
+charcTb <- ucec_normal[, sapply(ucec_normal@listData, class) == 'character']
+numTb <- ucec_normal[, sapply(ucec_normal@listData, class) %in% c('numeric', 'integer')]
+write.csv(charcTb, "data/ucec_normal_char.csv", row.names = TRUE)
+write.csv(numTb, "data/ucec_normal_num.csv", row.names = TRUE)
+```
+
+```{r}
+validate_ucec <- validate(ucec_rna, RAVmodel)
+heatmapTable(validate_ucec, RAVmodel, num.out = 15)
+
+validate_ucec <- validate(ucec_rna_cancer, RAVmodel)
+heatmapTable(validate_ucec, RAVmodel, num.out = 15)
+
+validate_ucec <- validate(ucec_rna_normal, RAVmodel)
+heatmapTable(validate_ucec, RAVmodel, num.out = 15)
+```

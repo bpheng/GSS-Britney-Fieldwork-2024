@@ -1,0 +1,179 @@
+---
+title: "COAD Preparation"
+author: "Sehyun Oh, Britney Pheng"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+    html:
+        fontsize: 14pxs
+        toc: true
+        top-depth: 3
+output: html_document
+---
+
+# Initial Setup
+## Load packages
+```{r packages, warning=FALSE, message=FALSE}
+
+suppressPackageStartupMessages({
+  # BiocManager
+  library(GenomicSuperSignature)
+  library(curatedTCGAData)
+  library(MultiAssayExperiment)
+  library(TCGAutils)
+  library(ComplexHeatmap)
+  
+  # CRAN
+  library(tidyverse)
+  library(magick)
+  library(wordcloud)
+  library(ztable)
+  library(metafolio)
+})
+```
+
+## Load RAVmodel
+```{r message=FALSE, warning=FALSE}
+RAVmodel <- getModel('C2', load=TRUE)
+```
+
+## COAD
+```{r message=FALSE, warning=FALSE}
+coad <- curatedTCGAData(diseaseCode = 'COAD',
+                        assays = 'RNA*',
+                        version = '2.1.0',
+                        dry.run = FALSE)
+```
+
+```{r}
+## COAD RNAseq
+coad_rna <- getWithColData(coad,
+                           'COAD_RNASeq2Gene-20160128', # RSEM TPM gene expression values
+                           mode = 'append')
+
+assay(coad_rna) <- log2(assay(coad_rna) + 1) # log-transformed
+
+## COAD metadata
+coad_meta <- colData(coad_rna)
+```
+
+```{r}
+## Parse out cancer vs normal samples
+sampleTables(coad)
+
+coad2 <- TCGAsplitAssays(coad, c("01", "11"))
+
+# Cancer
+coad_rna_cancer <- getWithColData(coad2,
+                                  '01_COAD_RNASeq2Gene-20160128',
+                                  mode = 'append')
+
+assay(coad_rna_cancer) <- log2(assay(coad_rna_cancer) + 1)
+coad_cancer_meta <- colData(coad_rna_cancer)
+
+
+# Normal
+coad_rna_normal <- getWithColData(coad2,
+                                  '11_COAD_RNASeq2Gene-20160128',
+                                  mode = 'append')
+
+assay(coad_rna_normal) <- log2(assay(coad_rna_normal) + 1)
+coad_normal_meta <- colData(coad_rna_normal)
+```
+
+```{r}
+## Select columns with >10% completeness
+# Cancer
+keep_attribute_ind <- which(colSums(!is.na(coad_cancer_meta)) > round(nrow(coad_cancer_meta)/10))
+coad_cancer <- coad_cancer_meta[keep_attribute_ind] %>% subset(select= -patientID)
+saveRDS(coad_cancer, "data/coad_cancer.rds")
+
+# Normal
+keep_attribute_ind <- which(colSums(!is.na(coad_normal_meta)) > round(nrow(coad_normal_meta)/10))
+coad_normal <- coad_normal_meta[keep_attribute_ind] %>% subset(select= -patientID)
+saveRDS(coad_normal, "data/coad_normal.rds")
+
+# All
+keep_attribute_ind <- which(colSums(!is.na(coad_meta)) > round(nrow(coad_meta)/10))
+coad_all <- coad_meta[keep_attribute_ind] %>% subset(select= -patientID)
+saveRDS(coad_all, "data/coad_all.rds")
+```
+
+# COAD Sample Score
+```{r}
+## Calculate validation scores
+coad_sampleScore <- calculateScore(coad_rna, RAVmodel)
+rownames(coad_sampleScore) <- gsub("\\.", "-", rownames(coad_sampleScore))
+
+coad_cancer_sampleScore <- calculateScore(coad_rna_cancer, RAVmodel)
+rownames(coad_cancer_sampleScore) <- gsub("\\.", "-", rownames(coad_cancer_sampleScore))
+
+coad_normal_sampleScore <- calculateScore(coad_rna_normal, RAVmodel)
+rownames(coad_normal_sampleScore) <- gsub("\\.", "-", rownames(coad_normal_sampleScore))
+```
+
+```{r}
+# COAD All Samples
+## Sample scores only for the validated RAVs
+validate_coad <- validate(coad_rna, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_coad, 
+                                     RAVmodel, 
+                                     num.out = 15, 
+                                     scoreCutoff = 0.45, 
+                                     indexOnly = TRUE)
+
+## Subset sampleScore
+coad_sampleScore_sub <- coad_sampleScore[,validated_ind] %>% as.data.frame()
+write.csv(coad_sampleScore_sub , "data/coad_all_sampleScore.csv") 
+
+# Cancer
+## Sample scores only for the validated RAVs
+validate_coad <- validate(coad_rna_cancer, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_coad, 
+                                     RAVmodel, 
+                                     num.out = 15, 
+                                     scoreCutoff = 0.45, 
+                                     indexOnly = TRUE)
+
+## Subset sampleScore
+coad_cancer_sampleScore_sub <- coad_cancer_sampleScore[,validated_ind] %>% as.data.frame()
+write.csv(coad_cancer_sampleScore_sub , "data/coad_cancer_sampleScore.csv") 
+
+
+# Normal
+## Sample scores only for the validated RAVs
+validate_coad <- validate(coad_rna_normal, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_coad, 
+                                     RAVmodel, 
+                                     num.out = 15, 
+                                     scoreCutoff = 0.45, 
+                                     indexOnly = TRUE)
+
+## Subset sampleScore
+coad_normal_sampleScore_sub <- coad_normal_sampleScore[,validated_ind] %>% as.data.frame()
+write.csv(coad_normal_sampleScore_sub , "data/coad_normal_sampleScore.csv") 
+```
+
+## Categorical and Numeric Variables
+## Based on variable types
+```{r}
+## Separate COAL All into two subsets: 
+charcTb <- coad_all[, sapply(coad_all@listData, class) == 'character']
+numTb <- coad_all[, sapply(coad_all@listData, class) %in% c('numeric', 'integer')]
+write.csv(charcTb, "data/coad_all_char.csv", row.names = TRUE)
+write.csv(numTb, "data/coad_all_num.csv", row.names = TRUE)
+
+## Separate COAD Cancer into two subsets: 
+charcTb <- coad_cancer[, sapply(coad_cancer@listData, class) == 'character'] # 374 metadata attributes (char)
+numTb <- coad_cancer[, sapply(coad_cancer@listData, class) %in% c('numeric', 'integer')] # 283 samples x 328 metadata attributes (num)
+write.csv(charcTb, "data/coad_cancer_char.csv", row.names = TRUE)
+write.csv(numTb, "data/coad_cancer_num.csv", row.names = TRUE)
+
+## Separate COAD Normal into two subsets: 
+charcTb <- coad_normal[, sapply(coad_normal@listData, class) == 'character']
+numTb <- coad_normal[, sapply(coad_normal@listData, class) %in% c('numeric', 'integer')]
+write.csv(charcTb, "data/coad_normal_char.csv", row.names = TRUE)
+write.csv(numTb, "data/coad_normal_num.csv", row.names = TRUE)
+```

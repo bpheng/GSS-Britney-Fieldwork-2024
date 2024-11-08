@@ -1,0 +1,173 @@
+---
+title: "COAD Preparation"
+author: "Sehyun Oh, Britney Pheng"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+    html:
+        fontsize: 14pxs
+        toc: true
+        top-depth: 3
+output: html_document
+---
+
+## Initial Setup
+
+### Load packages
+
+```{r packages, warning=FALSE, message=FALSE}
+suppressPackageStartupMessages({
+  # BiocManager
+  library(GenomicSuperSignature)
+  library(curatedTCGAData)
+  library(MultiAssayExperiment)
+  library(TCGAutils)
+  library(ComplexHeatmap)
+  
+  # CRAN
+  library(tidyverse) # includes dplyr, ggplot2, magrittr, tidyr
+  library(magick)
+  library(wordcloud)
+  library(ztable)
+  library(metafolio)
+})
+```
+
+### Load RAVmodel
+
+```{r message=FALSE, warning=FALSE}
+RAVmodel <- getModel('C2', load=TRUE)
+```
+
+### Select COAD RNA metadata
+
+```{r message=FALSE, warning=FALSE}
+coad <- curatedTCGAData(diseaseCode = 'COAD',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+coad_rna <- getWithColData(coad,
+                            'COAD_RNASeq2Gene-20160128')
+assay(coad_rna) <- log2(assay(coad_rna) + 1)
+coad_meta <- colData(coad_rna)
+
+## Parse out cancer vs normal samples
+sampleTables(coad)
+coad2 <- TCGAsplitAssays(coad, c("01", "11"))
+
+coad_rna_cancer <- getWithColData(coad2,
+                           '01_COAD_RNASeq2Gene-20160128')
+assay(coad_rna_cancer) <- log2(assay(coad_rna_cancer) + 1)
+coad_cancer <- colData(coad_rna_cancer)
+
+coad_rna_normal <- getWithColData(coad2,
+                           '11_COAD_RNASeq2Gene-20160128')
+assay(coad_rna_normal) <- log2(assay(coad_rna_normal) + 1)
+coad_normal <- colData(coad_rna_normal)
+```
+
+# heatmapTable: COAD
+
+```{r figures-side, fig.show="hold", out.width="50%", warning=FALSE, echo=FALSE}
+validate_coad_rna <- validate(coad_rna, RAVmodel)
+validate_coad_cancer <- validate(coad_rna_cancer, RAVmodel)
+validate_coad_normal <- validate(coad_rna_normal, RAVmodel)
+
+
+heatmapTable(validate_coad_rna, RAVmodel, num.out=15, column_title="All COAD Samples")
+heatmapTable(validate_coad_cancer, RAVmodel, num.out=15, column_title="COAD Cancer Samples")
+heatmapTable(validate_coad_normal, RAVmodel, num.out = 15, column_title="COAD Normal Samples")
+```
+# Subset
+
+## Sparsity Plot
+
+```{r figures-side-2, fig.show="hold", out.width="50%"}
+sparsity_summary <- table(colSums(is.na(coad_meta)))
+
+plot(stack(sparsity_summary)$ind,
+     stack(sparsity_summary)$values)
+```
+```{r}
+# Select columns with >10% completeness
+keep_attribute_ind <- which(colSums(!is.na(coad_meta)) > round(nrow(coad_meta)/10))
+meta_sub1 <- coad_meta[keep_attribute_ind]
+meta_sub1 <- subset(coad_meta, select= -patientID)
+```
+
+Remove batch effect variables from metadata table
+```{r}
+batch_var <- "analyte|portion|procurement|aliquot|uuid|barcode"
+batch_ind <- grep(batch_var, colnames(meta_sub1))
+meta_sub1 <- meta_sub1[,-batch_ind]
+```
+
+Character vs Numeric Attributes
+```{r}
+# Check for data types in listData
+unique(sapply(coad_meta@listData, type))
+
+charcTb <- meta_sub1[, sapply(meta_sub1, class) == 'character']
+numTb <- meta_sub1[, sapply(meta_sub1, class) %in% c('numeric', 'integer')]
+
+# View numeric variables that have <=4 unique values to determine if they should be converted to character variables
+addToFactors <- c()
+for (i in 1:length(numTb)) {
+  if (length(table(numTb[i])) <= 4) {
+    addToFactors <- c(addToFactors, i)
+  }
+}
+
+#numTb[addToFactors]
+charcTb <- c(charcTb, numTb[addToFactors])
+numTb <- numTb[-addToFactors]
+```
+
+# Separate out Factor Variables by number of levels (1, 2, 3+) not including NA
+```{r}
+# Convert to factor data type
+factorTb <- charcTb
+factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor, exclude = NULL)
+factorTb[sapply(factorTb, is.numeric)] <- lapply(factorTb[sapply(factorTb, is.numeric)], factor, exclude = NULL)
+
+
+single_factor_ind <- c()
+binary_factor_ind <- c()
+multi_factor_ind <- c()
+
+# Testing factor grouping
+for (i in 1:length(factorTb)) {
+  if (nlevels(factorTb[,i]) == 1 | 
+      (nlevels(factorTb[,i]) == 2 & any(is.na(levels(factorTb[,i]))))
+      ) {
+    single_factor_ind <- c(single_factor_ind, i)
+    
+  } else if (nlevels(factorTb[,i]) == 3 & any(is.na(levels(factorTb[,i]))) |
+             (nlevels(factorTb[,i]) == 2 & !any(is.na(levels(factorTb[,i]))))
+          ) {
+    binary_factor_ind <- c(binary_factor_ind, i)
+    
+  } else {
+    multi_factor_ind <- c(multi_factor_ind, i)
+  }
+}
+
+multilevel_factor <- factorTb[,multi_factor_ind]
+binary_factor <- factorTb[,binary_factor_ind]
+single_factor <- factorTb[,single_factor_ind]
+
+```
+
+```{r}
+# Calculate validation scores
+sampleScore <- calculateScore(coad_rna, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_coad_rna, RAVmodel, num.out = 15, scoreCutoff = 0.45, indexOnly = TRUE) #Using Pearson Coefficient
+
+## Subset sampleScore to join with MCPcounter
+sampleScore_sub <- sampleScore[, validated_ind] %>% as.data.frame()
+```
+
+
+
+

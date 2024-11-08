@@ -14,6 +14,7 @@ editor: visual
 # Initial Setup
 
 ## Load packages
+
 ```{r packages, warning=FALSE, message=FALSE}
 suppressPackageStartupMessages({
   # BiocManager
@@ -37,11 +38,13 @@ suppressPackageStartupMessages({
 ## Load data
 
 ### Load RAVmodel
+
 ```{r RAVmodel, warning=FALSE, message=FALSE}
 RAVmodel <- getModel('C2', load=TRUE)
 ```
 
 ### COAD: Colon adenocarcinoma
+
 ```{r COAD, warning=FALSE, message=FALSE}
 coad <- curatedTCGAData(diseaseCode = 'COAD',
                         assays = 'RNA*',
@@ -71,8 +74,8 @@ validate_coad_cancer <- validate_coad_cancer %>% arrange(desc(score))
 heatmapTable(validate_coad_cancer, RAVmodel, num.out=10, column_title="COAD Cancer Samples")
 ```
 
-
 ### LUAD: Lung adenocarcinoma
+
 ```{r}
 luad <- curatedTCGAData(diseaseCode = 'LUAD',
                         assays = 'RNA*',
@@ -94,6 +97,7 @@ save(luad_meta_cancer, file = "TCGA_LUAD_cancer_dataset.rda")
 ```
 
 ### LUSC: Lung squamous cell carcinoma
+
 ```{r}
 lusc <- curatedTCGAData(diseaseCode = 'LUSC',
                         assays = 'RNA*',
@@ -115,6 +119,7 @@ save(lusc_meta_cancer, file = "TCGA_LUSC_cancer_dataset.rda")
 ```
 
 ### BRCA: Breast invasive carcinoma
+
 ```{r}
 brca <- curatedTCGAData(diseaseCode = 'BRCA',
                         assays = 'RNA*',
@@ -136,6 +141,7 @@ save(brca_meta_cancer, file = "TCGA_BRCA_cancer_dataset.rda")
 ```
 
 ### KIRC: Kidney renal clear cell carcinoma
+
 ```{r}
 kirc <- curatedTCGAData(diseaseCode = 'KIRC',
                         assays = 'RNA*',
@@ -157,6 +163,7 @@ save(kirc_meta_cancer, file = "TCGA_KIRC_cancer_dataset.rda")
 ```
 
 ### KIRP: Kidney renal papillary cell carcinoma
+
 ```{r}
 kirp <- curatedTCGAData(diseaseCode = 'KIRP',
                         assays = 'RNA*',
@@ -178,6 +185,7 @@ save(kirp_meta_cancer, file = "TCGA_KIRP_cancer_dataset.rda")
 ```
 
 ### HNSC: Head and neck squamous cell carcinoma
+
 ```{r}
 hnsc <- curatedTCGAData(diseaseCode = 'HNSC',
                         assays = 'RNA*',
@@ -199,6 +207,7 @@ save(hnsc_meta_cancer, file = "TCGA_HNSC_cancer_dataset.rda")
 ```
 
 ### UCEC: Uterine corpus endometrial carcinoma
+
 ```{r}
 ucec <- curatedTCGAData(diseaseCode = 'UCEC',
                         assays = 'RNA*',
@@ -220,6 +229,7 @@ save(ucec_meta_cancer, file = "TCGA_UCEC_cancer_dataset.rda")
 ```
 
 ### OV: Ovarian serous cystadenocarcinoma
+
 ```{r}
 ov <- curatedTCGAData(diseaseCode = 'OV',
                         assays = 'RNA*',
@@ -241,6 +251,7 @@ save(ov_meta_cancer, file = "TCGA_OV_cancer_dataset.rda")
 ```
 
 ### PAAD: Pancreatic adenocarcinoma
+
 ```{r}
 paad <- curatedTCGAData(diseaseCode = 'PAAD',
                         assays = 'RNA*',
@@ -262,6 +273,7 @@ save(paad_meta_cancer, file = "TCGA_PAAD_cancer_dataset.rda")
 ```
 
 ### PRAD: Prostate adenocarcinoma
+
 ```{r}
 prad <- curatedTCGAData(diseaseCode = 'PRAD',
                         assays = 'RNA*',
@@ -283,6 +295,7 @@ save(prad_meta_cancer, file = "TCGA_PRAD_cancer_dataset.rda")
 ```
 
 ## Create vector dataset
+
 ```{r}
 TCGA_cancer_validationDatasets <- vector(mode = "list", length = 11)
 names(TCGA_cancer_validationDatasets) <- c("BRCA", "COAD", "HNSC", "KIRC", "KIRP", "LUAD",
@@ -304,6 +317,7 @@ save(TCGA_cancer_validationDatasets, file = "TCGA_cancer_validationDatasets.rda"
 ```
 
 ### Validate
+
 ```{r}
 val_all <- validate(TCGA_cancer_validationDatasets, RAVmodel)
 ```
@@ -311,4 +325,3 @@ val_all <- validate(TCGA_cancer_validationDatasets, RAVmodel)
 ```{r}
 heatmapTable(val_all, RAVmodel, num.out=10)
 ```
-

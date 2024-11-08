@@ -82,88 +82,65 @@ rf <- randomForest(MSI_Status~., data=train_data, proximity=TRUE)
 #print(rf)
 ```
 
-#curatedCRCData
+#UCEC
 
 ```{r}
-library(curatedCRCData)
-data(package="curatedCRCData")
+ucec <- curatedTCGAData(diseaseCode = 'UCEC',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+
+## Parse out cancer vs normal samples
+sampleTables(ucec)
+ucec2 <- TCGAsplitAssays(ucec, c("01", "11"))
+
+ucec_rna_cancer <- getWithColData(ucec2,
+                           '01_UCEC_RNASeq2Gene-20160128')
+assay(ucec_rna_cancer) <- log2(assay(ucec_rna_cancer) + 1)
+
+ucec_rna_cancer <- ucec_rna_cancer[,ucec_rna_cancer@colData@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status %in% c('msi-h', 'mss')]
+
+ucec_meta_cancer <- colData(ucec_rna_cancer)
 ```
 
 ```{r}
-data(GSE13067_eset)
-
-library(SummarizedExperiment)
-
-mySummarizedExperiment <- makeSummarizedExperimentFromExpressionSet(GSE13067_eset)
-assay(mySummarizedExperiment) <- log2(assay(mySummarizedExperiment) + 1)
-
-#mySummarizedExperiment@colData$msi
-mySummarizedExperiment@colData@listData[["msi"]] <- gsub("MSS", "mss", mySummarizedExperiment@colData@listData[["msi"]] )
-mySummarizedExperiment@colData@listData[["msi"]] <- gsub("MSI", "msi", mySummarizedExperiment@colData@listData[["msi"]] )
-
-GSE13067.meta <- colData(mySummarizedExperiment)
-GSE13067.sampleScore <- calculateScore(mySummarizedExperiment, RAVmodel) %>% as.data.frame()
+ucec.meta <- colData(ucec_rna_cancer)
+ucec.sampleScore <- calculateScore(ucec_rna_cancer, RAVmodel) %>% as.data.frame()
 ```
 
 ```{r}
-target_attr <- "msi"
+target_attr <- "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"
 
-var_type <- GSE13067.meta@listData
+var_type <- ucec.meta@listData
 unique(sapply(var_type, type))
-charcTb <- GSE13067.meta[, sapply(var_type, class) == 'character']
+charcTb <- ucec.meta[, sapply(var_type, class) == 'character']
 factorTb <- charcTb
 factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor)
 
-labels <- factorTb[[target_attr]]
-nonNALabels <- which(!is.na(labels))
-data <- GSE13067.sampleScore[,validated_RAVs]
-
-new_data <- data[nonNALabels,]
-new_labels <- labels[nonNALabels]
-new_data$msi <- new_labels
-```
-
-```{r}
-GSE13067.prediction <- predict(rf, new_data)
-confusionMatrix(GSE13067.prediction, new_data$msi)
-```
-
-Another curatedCRC dataset: GSE13294_eset
-
-```{r}
-data(GSE13294_eset)
-GSE13294_eset <- makeSummarizedExperimentFromExpressionSet(GSE13294_eset)
-assay(GSE13294_eset) <- log2(assay(GSE13294_eset) + 1)
-
-
-GSE13294_eset@colData@listData[["msi"]] <- gsub("MSS", "mss", GSE13294_eset@colData@listData[["msi"]] )
-GSE13294_eset@colData@listData[["msi"]] <- gsub("MSI", "msi", GSE13294_eset@colData@listData[["msi"]] )
-
-GSE13294.meta <- colData(GSE13294_eset)
-GSE13294.sampleScore <- calculateScore(GSE13294_eset, RAVmodel) %>% as.data.frame()
-
-```
-
-```{r}
-target_attr <- "msi"
-
-var_type <- GSE13294.meta@listData
-unique(sapply(var_type, type))
-charcTb <- GSE13294.meta[, sapply(var_type, class) == 'character']
-
-factorTb <- charcTb
-factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor)
+levels(factorTb@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)[levels(factorTb@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status) == "msi-h"] <- "msi"
 
 labels <- factorTb[[target_attr]]
 nonNALabels <- which(!is.na(labels))
-data <- GSE13294.sampleScore[,validated_RAVs]
+ucec_data <- ucec.sampleScore[,validated_RAVs]
 
-new_data <- data[nonNALabels,]
+new_ucec_data <- ucec_data[nonNALabels,]
 new_labels <- labels[nonNALabels]
-new_data$msi <- new_labels
+new_ucec_data$msi <- new_labels
+
 ```
 
 ```{r}
-GSE13294.prediction <- predict(rf, new_data)
-confusionMatrix(GSE13294.prediction, new_data$msi)
+ucec.prediction <- predict(rf, new_ucec_data)
+confusionMatrix(ucec.prediction, new_ucec_data$msi)
+```
+
+```{r}
+library("rpart")
+library("rpart.plot")
+
+#fit new model with rpart
+msi_ucec <- rpart(msi ~., data = new_ucec_data)
+
+# plot the tree
+rpart.plot(msi_ucec)
 ```

@@ -1,0 +1,192 @@
+---
+title: "STAD Preparation"
+author: "Sehyun Oh, Britney Pheng"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+format:
+    html:
+        fontsize: 14pxs
+        toc: true
+        top-depth: 3
+output: html_document
+---
+
+# Initial Setup
+## Load packages
+```{r packages, warning=FALSE, message=FALSE}
+
+suppressPackageStartupMessages({
+  # BiocManager
+  library(GenomicSuperSignature)
+  library(curatedTCGAData)
+  library(MultiAssayExperiment)
+  library(TCGAutils)
+  library(ComplexHeatmap)
+  
+  # CRAN
+  library(tidyverse)
+  library(magick)
+  library(wordcloud)
+  library(ztable)
+  library(metafolio)
+})
+```
+
+## Load RAVmodel
+```{r message=FALSE, warning=FALSE}
+RAVmodel <- getModel('C2', load=TRUE)
+```
+
+## STAD
+```{r message=FALSE, warning=FALSE}
+stad <- curatedTCGAData(diseaseCode = 'STAD',
+                        assays = 'RNA*',
+                        version = '2.0.1',
+                        dry.run = FALSE)
+```
+
+```{r}
+## STAD RNAseq
+stad_rna <- getWithColData(stad,
+                           'STAD_RNASeq2Gene-20160128', # RSEM TPM gene expression values
+                           mode = 'append')
+
+assay(stad_rna) <- log2(assay(stad_rna) + 1) # log-transformed
+
+## STAD metadata
+stad_meta <- colData(stad_rna)
+```
+
+```{r}
+## Parse out cancer vs normal samples
+sampleTables(stad)
+
+stad2 <- TCGAsplitAssays(stad, c("01", "11"))
+
+# Cancer
+stad_rna_cancer <- getWithColData(stad2,
+                                  '01_STAD_RNASeq2Gene-20160128',
+                                  mode = 'append')
+
+assay(stad_rna_cancer) <- log2(assay(stad_rna_cancer) + 1)
+stad_cancer_meta <- colData(stad_rna_cancer)
+
+
+# Normal
+stad_rna_normal <- getWithColData(stad2,
+                                  '11_STAD_RNASeq2Gene-20160128',
+                                  mode = 'append')
+
+assay(stad_rna_normal) <- log2(assay(stad_rna_normal) + 1)
+stad_normal_meta <- colData(stad_rna_normal)
+```
+
+```{r}
+## Select columns with >10% completeness
+# Cancer
+keep_attribute_ind <- which(colSums(!is.na(stad_cancer_meta)) > round(nrow(stad_cancer_meta)/10))
+stad_cancer <- stad_cancer_meta[keep_attribute_ind] %>% subset(select= -patientID)
+saveRDS(stad_cancer, "data/stad_cancer.rds")
+
+# Normal
+keep_attribute_ind <- which(colSums(!is.na(stad_normal_meta)) > round(nrow(stad_normal_meta)/10))
+stad_normal <- stad_normal_meta[keep_attribute_ind] %>% subset(select= -patientID)
+saveRDS(stad_normal, "data/stad_normal.rds")
+
+# All
+keep_attribute_ind <- which(colSums(!is.na(stad_meta)) > round(nrow(stad_meta)/10))
+stad_all <- stad_meta[keep_attribute_ind] %>% subset(select= -patientID)
+saveRDS(stad_all, "data/stad_all.rds")
+```
+
+# STAD Sample Score
+```{r}
+## Calculate validation scores
+stad_sampleScore <- calculateScore(stad_rna, RAVmodel)
+rownames(stad_sampleScore) <- gsub("\\.", "-", rownames(stad_sampleScore))
+
+stad_cancer_sampleScore <- calculateScore(stad_rna_cancer, RAVmodel)
+rownames(stad_cancer_sampleScore) <- gsub("\\.", "-", rownames(stad_cancer_sampleScore))
+
+stad_normal_sampleScore <- calculateScore(stad_rna_normal, RAVmodel)
+rownames(stad_normal_sampleScore) <- gsub("\\.", "-", rownames(stad_normal_sampleScore))
+```
+
+```{r}
+# STAD All Samples
+## Sample scores only for the validated RAVs
+validate_stad <- validate(stad_rna, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_stad, 
+                                     RAVmodel, 
+                                     num.out = 15, 
+                                     scoreCutoff = 0.45, 
+                                     indexOnly = TRUE)
+
+## Subset sampleScore
+stad_sampleScore_sub <- stad_sampleScore[,validated_ind] %>% as.data.frame()
+write.csv(stad_sampleScore_sub , "data/stad_all_sampleScore.csv") 
+
+# Cancer
+## Sample scores only for the validated RAVs
+validate_stad <- validate(stad_rna_cancer, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_stad, 
+                                     RAVmodel, 
+                                     num.out = 15, 
+                                     scoreCutoff = 0.45, 
+                                     indexOnly = TRUE)
+
+## Subset sampleScore
+stad_cancer_sampleScore_sub <- stad_cancer_sampleScore[,validated_ind] %>% as.data.frame()
+write.csv(stad_cancer_sampleScore_sub , "data/stad_cancer_sampleScore.csv") 
+
+
+# Normal
+## Sample scores only for the validated RAVs
+validate_stad <- validate(stad_rna_normal, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_stad, 
+                                     RAVmodel, 
+                                     num.out = 15, 
+                                     scoreCutoff = 0.45, 
+                                     indexOnly = TRUE)
+
+## Subset sampleScore
+stad_normal_sampleScore_sub <- stad_normal_sampleScore[,validated_ind] %>% as.data.frame()
+write.csv(stad_normal_sampleScore_sub , "data/stad_normal_sampleScore.csv") 
+```
+
+## Categorical and Numeric Variables
+## Based on variable types
+```{r}
+## Separate COAL All into two subsets: 
+charcTb <- stad_all[, sapply(stad_all@listData, class) == 'character']
+numTb <- stad_all[, sapply(stad_all@listData, class) %in% c('numeric', 'integer')]
+write.csv(charcTb, "data/stad_all_char.csv", row.names = TRUE)
+write.csv(numTb, "data/stad_all_num.csv", row.names = TRUE)
+
+## Separate STAD Cancer into two subsets: 
+charcTb <- stad_cancer[, sapply(stad_cancer@listData, class) == 'character'] # 374 metadata attributes (char)
+numTb <- stad_cancer[, sapply(stad_cancer@listData, class) %in% c('numeric', 'integer')] # 283 samples x 328 metadata attributes (num)
+write.csv(charcTb, "data/stad_cancer_char.csv", row.names = TRUE)
+write.csv(numTb, "data/stad_cancer_num.csv", row.names = TRUE)
+
+## Separate STAD Normal into two subsets: 
+charcTb <- stad_normal[, sapply(stad_normal@listData, class) == 'character']
+numTb <- stad_normal[, sapply(stad_normal@listData, class) %in% c('numeric', 'integer')]
+write.csv(charcTb, "data/stad_normal_char.csv", row.names = TRUE)
+write.csv(numTb, "data/stad_normal_num.csv", row.names = TRUE)
+```
+
+
+```{r}
+validate_stad <- validate(stad_rna, RAVmodel)
+heatmapTable(validate_stad, RAVmodel, num.out = 15)
+
+validate_stad <- validate(stad_rna_cancer, RAVmodel)
+heatmapTable(validate_stad, RAVmodel, num.out = 15)
+
+validate_stad <- validate(stad_rna_normal, RAVmodel)
+heatmapTable(validate_stad, RAVmodel, num.out = 15)
+```
+
