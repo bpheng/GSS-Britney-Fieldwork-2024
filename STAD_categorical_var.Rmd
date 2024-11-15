@@ -12,7 +12,9 @@ editor: visual
 ---
 
 # Initial Setup
+
 ## Load packages
+
 ```{r packages, warning=FALSE, message=FALSE}
 suppressPackageStartupMessages({
   # BiocManager
@@ -32,25 +34,29 @@ suppressPackageStartupMessages({
 ```
 
 ## Load STAD All data
+
 ```{r message=FALSE}
 ## SummarizedExperiment object containing STAD dataset 
-stad_all <- readRDS("data/stad_all.rds") # 20,501 genes x 261 samples
+stad_all <- readRDS("data/stad_cancer.rds") # 20,501 genes x 261 samples
 
 ## Only the top 15 validated RAVs
-sampleScore_sub <- read.csv("data/stad_all_sampleScore.csv", row.names = 1) # 261 samples x 15 RAVs
+sampleScore_sub <- read.csv("data/stad_cancer_sampleScore.csv", row.names = 1) # 261 samples x 15 RAVs
 
 ## STAD categorical variables
-charTb <- read.csv("data/stad_all_char.csv", row.names = 1) # 261 samples x 182 metadata attributes (char)
+charTb <- read.csv("data/stad_cancer_char.csv", row.names = 1) # 261 samples x 182 metadata attributes (char)
 ```
 
 ## Prepare data
+
 Convert character variables into the `factor` data type
+
 ```{r}
 factorTb <- charTb
 factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor)
 ```
 
 ### Check the factor level
+
 ```{r}
 nlevel <- sapply(factorTb, function(x) {
     res <- levels(x) %>% na.omit
@@ -63,6 +69,7 @@ factorTb_m_lv <- factorTb[nlevel > 2]
 ```
 
 # Binomial Wilcox Test
+
 ```{r}
 wilcox_test_res <- as.data.frame(matrix(nrow = ncol(factorTb_2_lv),
                                 ncol = ncol(sampleScore_sub)))
@@ -100,12 +107,12 @@ heatmap(as.matrix(wtest_stad_wvalue_2), main = 'STAD All Samples: Wilcoxon Test 
 ```
 
 ```{r}
-#Only view w-values with significant p-value (<0.01)
+#Only view w-values with significant p-value (<0.05)
 wtest_stad_sig_wvalue <- wilcox_test_res
 
  for (i in seq_len(ncol(sampleScore_sub))) {
    for (j in seq_len(ncol(factorTb_2_lv))) {
-     if (wilcox.test(sampleScore_sub[, i] ~ factorTb_2_lv[,j], alternative="two.sided")$p.val < 0.01) {
+     if (wilcox.test(sampleScore_sub[, i] ~ factorTb_2_lv[,j], alternative="two.sided")$p.val < 0.05) {
        wtest_stad_sig_wvalue[j, i] <- wilcox.test(sampleScore_sub[, i] ~ factorTb_2_lv[,j],
                                                   alternative="two.sided")$statistic
      }
@@ -120,14 +127,15 @@ wtest_stad_sig_wvalue <- wtest_stad_sig_wvalue[-batch_char_ind_2, ]
 ```
 
 ```{r results='asis'}
-options(ztable.type='html')
-
-ztable(wtest_stad_sig_wvalue) %>%
-  makeHeatmap(palette = 'Blues') %>%
-  print(caption='Cancer Sample W-test with p-values < 0.01')
+# options(ztable.type='html')
+# 
+# ztable(wtest_stad_sig_wvalue) %>%
+#   makeHeatmap(palette = 'Blues') %>%
+#   print(caption='Cancer Sample W-test with p-values < 0.01')
 ```
 
 # Calculate Kruskal-Wallis Test for Multinomial Factor Variables
+
 ```{r}
 kruskal_wallis_res <- as.data.frame(matrix(nrow = ncol(factorTb_m_lv),
                                 ncol = ncol(sampleScore_sub)))
@@ -161,4 +169,6 @@ kwtest_stad_pvalue <- kwtest_stad_pvalue[-batch_char_ind,]
 
 ```{r figures-side-5, fig.show="hold", out.width="50%"}
 heatmap(as.matrix(kwtest_stad_wvalue), main = 'STAD All Samples: Kruskal-Wallis Test')
+
+heatmap(as.matrix(kwtest_stad_wvalue[40:50,]), main = 'STAD Cancer Samples: Kruskal-Wallis Test')
 ```

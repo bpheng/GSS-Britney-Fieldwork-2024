@@ -107,12 +107,12 @@ heatmap(as.matrix(wtest_ucec_wvalue_2), main = 'UCEC All Samples: Wilcoxon Test 
 ```
 
 ```{r}
-#Only view w-values with significant p-value (<0.01)
+#Only view w-values with significant p-value (<0.05)
 wtest_ucec_sig_wvalue <- wilcox_test_res
 
  for (i in seq_len(ncol(sampleScore_sub))) {
    for (j in seq_len(ncol(factorTb_2_lv))) {
-     if (wilcox.test(sampleScore_sub[, i] ~ factorTb_2_lv[,j], alternative="two.sided")$p.val < 0.01) {
+     if (wilcox.test(sampleScore_sub[, i] ~ factorTb_2_lv[,j], alternative="two.sided")$p.val < 0.05) {
        wtest_ucec_sig_wvalue[j, i] <- wilcox.test(sampleScore_sub[, i] ~ factorTb_2_lv[,j],
                                                   alternative="two.sided")$statistic
      }
@@ -131,7 +131,7 @@ options(ztable.type='html')
 
 ztable(wtest_ucec_sig_wvalue) %>%
   makeHeatmap(palette = 'Blues') %>%
-  print(caption='All Sample W-test with p-values < 0.01')
+  print(caption='All Sample W-test with p-values < 0.05')
 ```
 
 # Calculate Kruskal-Wallis Test for Multinomial Factor Variables

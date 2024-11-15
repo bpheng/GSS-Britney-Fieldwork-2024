@@ -400,3 +400,8 @@ graph_categorical(834, 1166, new_factorTb, sampleScore_sub,
 ```{r}
 graph_categorical(834, 188, binary_factor_2, sampleScore_sub, 'patient.braf_gene_analysis_result', 'BRAF Gene Analysis Result')
 ```
+
+```{r}
+drawWordcloud(RAVmodel, 1172)
+```
+

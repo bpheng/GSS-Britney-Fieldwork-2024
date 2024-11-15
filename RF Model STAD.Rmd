@@ -56,8 +56,6 @@ sampleScore_sub <- read.csv("/Users/bpheng/data/sampleScore_train_cancer.csv")
 RAVmodel <- getModel('C2', load=TRUE)
 ```
 
-
-
 ```{r}
 ## Convert character variables into the factor data type
 factorTb <- train_rf_data
@@ -143,7 +141,11 @@ new_data$msi <- new_labels
 
 ```{r}
 stad_prediction <- predict(rf, new_data)
-confusionMatrix(stad_prediction, new_data$msi)
+stad_matrix <- confusionMatrix(stad_prediction, new_data$msi)
+stad_df <- stad_matrix$table
+
+mosaic(stad_df,legend=FALSE,
+       main = "STAD Confusion Matrix Mosaic Plot")
 ```
 
 ```{r}

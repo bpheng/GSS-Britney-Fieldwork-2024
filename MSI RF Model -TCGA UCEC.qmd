@@ -39,6 +39,10 @@ suppressPackageStartupMessages({
 })
 ```
 
+```{r message=FALSE, warning=FALSE}
+RAVmodel <- getModel('C2', load=TRUE)
+```
+
 ## Load data
 
 ```{r}

@@ -33,6 +33,8 @@ suppressPackageStartupMessages({
   library(metafolio)
   library(randomForest)
   library(caret)
+  library(yardstick)
+  library(ggplot2)
 })
 ```
 
@@ -134,7 +136,14 @@ new_ucec_data$msi <- new_labels
 
 ```{r}
 ucec.prediction <- predict(rf, new_ucec_data)
-confusionMatrix(ucec.prediction, new_ucec_data$msi)
+ucec_matrix <- confusionMatrix(ucec.prediction, new_ucec_data$msi)
+ucec_df <- ucec_matrix$table
+
+# Plotting the mosaic plot
+mosaic(ucec_df,legend=FALSE,
+       main = "UCEC Confusion Matrix Mosaic Plot")
+
+
 ```
 
 ```{r}
