@@ -1,0 +1,215 @@
+---
+title: "RF Model - Combined TCGA Data"
+author: "Britney Pheng"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r}
+knitr::opts_chunk$set(echo = TRUE)
+
+suppressPackageStartupMessages({
+  # BiocManager
+  library(GenomicSuperSignature)
+  library(curatedTCGAData)
+  library(MultiAssayExperiment)
+  library(TCGAutils)
+  library(ComplexHeatmap)
+  
+  # CRAN
+  library(tidyverse) # includes dplyr, ggplot2, magrittr, tidyr
+  library(magick)
+  library(wordcloud)
+  library(ztable)
+  library(metafolio)
+  library(randomForest)
+  library(caret)
+})
+```
+
+```{r message=FALSE, warning=FALSE}
+RAVmodel <- getModel('C2', load=TRUE)
+```
+
+```{r message=FALSE}
+data <- curatedTCGAData(diseaseCode = c('COAD', 'STAD', 'UCEC'),
+                        assays = 'RNASeq2Gene',
+                        version = '2.1.1',
+                        dry.run = FALSE)
+```
+
+```{r}
+sampleTables(data)
+data <- TCGAsplitAssays(data, c("01", "11"))
+
+coad_cancer <- getWithColData(data,
+                           '01_COAD_RNASeq2Gene-20160128')
+stad_cancer <- getWithColData(data,
+                           '01_STAD_RNASeq2Gene-20160128')
+ucec_cancer <- getWithColData(data,
+                           '01_UCEC_RNASeq2Gene-20160128')
+
+combined_data <- cbind(coad_cancer, stad_cancer, ucec_cancer)
+assay(combined_data) <- log2(assay(combined_data) + 1)
+
+table(combined_data@colData@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)
+# 179 msi-h, 120 msi-l, 566 mss, 9 indeterminate
+
+tcga_dat <- combined_data[,combined_data@colData@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status %in% c('msi-h', 'mss')]
+
+combined_data_meta <- colData(tcga_dat)
+```
+
+```{r message=FALSE}
+validate_combined_data <- validate(combined_dat, RAVmodel)
+heatmapTable(validate_combined_data, RAVmodel, num.out=10)
+
+#Validate each cancer type separately to compare
+# assay(coad_cancer) <- log2(assay(coad_cancer) + 1)
+# assay(stad_cancer) <- log2(assay(stad_cancer) + 1)
+# assay(ucec_cancer) <- log2(assay(ucec_cancer) + 1)
+
+validate_coad_data <- validate(coad_cancer, RAVmodel)
+validate_stad_data <- validate(stad_cancer, RAVmodel)
+validate_ucec_data <- validate(ucec_cancer, RAVmodel)
+
+heatmapTable(validate_coad_data, RAVmodel, num.out=15, column_title = "COAD Cancer")
+heatmapTable(validate_stad_data, RAVmodel, num.out=15, column_title = "STAD Cancer")
+heatmapTable(validate_ucec_data, RAVmodel, num.out=15, column_title = "UCEC Cancer")
+
+```
+
+```{r}
+# Select columns with >10% completeness
+keep_attribute_ind <- which(colSums(!is.na(combined_data_meta)) > round(nrow(combined_data_meta)/10))
+dat <- combined_data_meta[keep_attribute_ind]
+dat <- subset(combined_data_meta, select= -patientID)
+```
+
+
+```{r}
+# Calculate validation scores
+sampleScore <- calculateScore(combined_data, RAVmodel)
+
+validated_ind <- validatedSignatures(validate_combined_data, RAVmodel, num.out = 15, scoreCutoff = 0.45, indexOnly = TRUE) #Using Pearson Coefficient
+
+## Subset sampleScore to join with MCPcounter
+sampleScore_sub <- sampleScore[, validated_ind] %>% as.data.frame()
+```
+
+```{r}
+# Check for data types in listData
+unique(sapply(combined_data@colData, type))
+
+charcTb <- dat[, sapply(dat, class) == 'character']
+numTb <- dat[, sapply(dat, class) %in% c('numeric', 'integer')]
+
+# View numeric variables that have <=4 unique values to determine if they should be converted to character variables
+addToFactors <- c()
+for (i in 1:length(numTb)) {
+  if (length(table(numTb[i])) <= 4) {
+    addToFactors <- c(addToFactors, i)
+  }
+}
+#numTb[addToFactors] #None at this time
+#charcTb <- c(charcTb, numTb[addToFactors])
+#numTb <- numTb[-addToFactors]
+```
+
+```{r}
+# Convert to factor data type
+factorTb <- dat[, sapply(dat, class) == 'character']
+
+#factorTb <- charcTb
+factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor, exclude = NULL)
+
+#any(is.na(levels(factorTb[,2])))
+single_factor_ind <- c()
+binary_factor_ind <- c()
+multi_factor_ind <- c()
+
+# Testing factor grouping
+for (i in 1:length(factorTb)) {
+  if (nlevels(factorTb[,i]) == 1 | 
+      (nlevels(factorTb[,i]) == 2 & any(is.na(levels(factorTb[,i]))))
+      ) {
+    single_factor_ind <- c(single_factor_ind, i)
+    
+  } else if (nlevels(factorTb[,i]) == 3 & any(is.na(levels(factorTb[,i]))) |
+             (nlevels(factorTb[,i]) == 2 & !any(is.na(levels(factorTb[,i]))))
+          ) {
+    binary_factor_ind <- c(binary_factor_ind, i)
+    
+  } else {
+    multi_factor_ind <- c(multi_factor_ind, i)
+  }
+}
+
+new_factorTb <- factorTb[,multi_factor_ind]
+binary_factor <- factorTb[,binary_factor_ind]
+single_factor <- factorTb[,single_factor_ind]
+```
+
+# Calculate Kruskal-Wallis Test for Multinomial Factor Variables
+```{r}
+kruskal_wallis_res <- as.data.frame(matrix(nrow = ncol(new_factorTb),
+                                ncol = ncol(sampleScore_sub)))
+
+rownames(kruskal_wallis_res) <- colnames(new_factorTb)
+colnames(kruskal_wallis_res) <- colnames(sampleScore_sub)
+
+kwtest_coad_wvalue <- kruskal_wallis_res
+kwtest_coad_pvalue <- kruskal_wallis_res
+kw_coad_sig_wvalue <- kruskal_wallis_res
+
+for (i in seq_len(ncol(sampleScore_sub))) {
+  for (j in seq_len(ncol(new_factorTb))) {
+    ## Kruskal-Wallis Test
+    kruskal_test <- kruskal.test(sampleScore_sub[, i] ~ new_factorTb[,j])
+    
+    ## Kruskal-Wallis Chi-squared value
+    kw_val <-  kruskal_test$statistic
+    kwtest_coad_wvalue[j, i] <- kw_val
+
+    ## p-value
+    pval <-  kruskal_test$p.value
+    kwtest_coad_pvalue[j, i] <- pval
+    
+    ## Kruskal-Wallis Chi-squared value with significant p-value (<0.05)
+    if (kruskal_test$p.value < 0.05) {
+      kw_coad_sig_wvalue[j,i] <- kruskal_test$statistic
+    }
+  }
+}
+
+batch_char_ind <- grep('analyte|analytes|portion|procurement|aliquot|uuid|barcode',
+                  rownames(kwtest_coad_wvalue))
+kwtest_coad_wvalue <- kwtest_coad_wvalue[-batch_char_ind,]
+kwtest_coad_pvalue <- kwtest_coad_pvalue[-batch_char_ind,]
+kw_coad_sig_wvalue <- kw_coad_sig_wvalue[-batch_char_ind,]
+
+kw_coad_sig_wvalue <- kw_coad_sig_wvalue[-which(rowSums(is.na(kw_coad_sig_wvalue)) >= 13),]
+```
+
+```{r results='asis'}
+options(ztable.type='html')
+ztable(kw_coad_sig_wvalue) %>%
+  makeHeatmap(palette = 'Blues') %>%
+  print(caption='Combined TCGA Cancer Sample Kruskal-Wallis Test with p-values < 0.05')
+```
+
+```{r figures-side-5, fig.show="hold", out.width="50%"}
+heatmap(as.matrix(kwtest_coad_wvalue), main = 'COAD, STAD, UCEC Kruskal-Wallis Test Cancer Multinomial')
+```
+
+```{r}
+drawWordcloud(RAVmodel, 517)
+```
+
+
+
+
+
+
+
+
