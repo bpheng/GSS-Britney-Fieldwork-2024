@@ -288,3 +288,8 @@ test_msi_model <- rpart(MSI_Status ~., data = test_data)
 # plot the tree
 rpart.plot(train_msi_model)
 ```
+
+```{r}
+plot(rf)
+```
+

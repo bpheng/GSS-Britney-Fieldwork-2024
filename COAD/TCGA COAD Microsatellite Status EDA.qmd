@@ -47,15 +47,6 @@ coad <- curatedTCGAData(diseaseCode = 'COAD',
                         version = '2.0.1',
                         dry.run = FALSE)
 
-luad <- curatedTCGAData(diseaseCode = 'LUAD',
-                        assays = 'RNA*',
-                        version = '2.0.1',
-                        dry.run = FALSE)
-
-luad_rna <- getWithColData(luad,
-                            'LUAD_RNASeq2Gene-20160128')
-sampleTables(luad)
-
 coad_rna <- getWithColData(coad,
                             'COAD_RNASeq2Gene-20160128')
 
@@ -77,10 +68,7 @@ coad_rna_normal <- getWithColData(coad2,
 assay(coad_rna_normal) <- log2(assay(coad_rna_normal) + 1)
 coad_normal <- colData(coad_rna_normal)
 
-table(coad_cancer$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)
-
-table(coad_normal$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)
-
+# Checking if normal and cancer samples have different MSI status
 normal_tb <- coad_normal %>%
   as.data.frame() %>%
   dplyr::select(patientID, patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)
@@ -90,6 +78,8 @@ cancer_tb <- coad_cancer %>%
   dplyr::select(patientID, patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)
 
 combined_tb <- inner_join(normal_tb, cancer_tb, by="patientID") # All paired cancer and normal samples have the same MSI status
+
+#Because they are the same, we will only use the cancer (independent) samples
 ```
 
 # heatmapTable: COAD
@@ -111,7 +101,7 @@ heatmapTable(validate_coad_cancer, RAVmodel, num.out=10, column_title="COAD Canc
 ```{r figures-side-2, fig.show="hold", out.width="50%"}
 # Cancer
 sparsity_summary <- table(colSums(is.na(coad_cancer)))
-sparsity_summary
+#sparsity_summary
 ```
 
 ## Sparsity Plot
@@ -126,23 +116,22 @@ plot(stack(sparsity_summary)$ind,
 # Select columns with >10% completeness
 # Cancer
 keep_attribute_ind <- which(colSums(!is.na(coad_cancer)) > round(nrow(coad_cancer)/10))
-meta_sub1 <- coad_cancer[keep_attribute_ind]
-meta_sub1 <- subset(coad_cancer, select= -patientID)
+meta_subset <- coad_cancer[keep_attribute_ind] %>% subset(select= -patientID)
 ```
 
 ```{r}
 # Randomly select for 140 rows
-set.seed(1)
-random_sample_ind <- sample(1:nrow(meta_sub1), 140)
-meta_sub2 <- meta_sub1[random_sample_ind,]
+# set.seed(1)
+# random_sample_ind <- sample(1:nrow(meta_sub1), 140)
+# meta_sub2 <- meta_sub1[random_sample_ind,]
 ```
 
 ```{r}
 # Check for data types in listData
 unique(sapply(coad_cancer@listData, type))
 
-charcTb <- meta_sub2[, sapply(meta_sub2, class) == 'character']
-numTb <- meta_sub2[, sapply(meta_sub2, class) %in% c('numeric', 'integer')]
+charcTb <- meta_subset[, sapply(meta_subset, class) == 'character']
+numTb <- meta_subset[, sapply(meta_subset, class) %in% c('numeric', 'integer')]
 
 # View numeric variables that have <=4 unique values to determine if they should be converted to character variables
 addToFactors <- c()
@@ -151,9 +140,9 @@ for (i in 1:length(numTb)) {
     addToFactors <- c(addToFactors, i)
   }
 }
-#numTb[addToFactors] #None at this time
-#charcTb <- c(charcTb, numTb[addToFactors])
-#numTb <- numTb[-addToFactors]
+
+charcTb <- c(charcTb, numTb[addToFactors])
+numTb <- numTb[-addToFactors]
 ```
 
 ```{r}
@@ -163,14 +152,14 @@ sampleScore <- calculateScore(coad_rna_cancer, RAVmodel)
 validated_ind <- validatedSignatures(validate_coad_cancer, RAVmodel, num.out = 15, scoreCutoff = 0.45, indexOnly = TRUE) #Using Pearson Coefficient
 
 ## Subset sampleScore to join with MCPcounter
-sampleScore_sub <- sampleScore[random_sample_ind, validated_ind] %>% as.data.frame()
+sampleScore_sub <- sampleScore[, validated_ind] %>% as.data.frame()
 ```
 
 # Separate out Factor Variables by number of levels (1, 2, 3+) not including NA
 
 ```{r}
 # Convert to factor data type
-factorTb <- meta_sub2[, sapply(meta_sub2, class) == 'character']
+factorTb <- meta_subset[, sapply(meta_subset, class) == 'character']
 
 #factorTb <- charcTb
 factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor, exclude = NULL)
@@ -203,7 +192,6 @@ single_factor <- factorTb[,single_factor_ind]
 ```
 
 # Calculate Wilcoxon Test for Binomial Factor Variables
-
 ```{r}
 #Remove factors without enough y-observations
 
@@ -258,14 +246,13 @@ wtest_coad_pvalue_2 <- wtest_coad_pvalue[-batch_char_ind,]
 ```{r figures-side-4, fig.show="hold", out.width="50%"}
 heatmap(as.matrix(wtest_coad_wvalue_2), main = 'COAD Wilcoxon Test Cancer Binomial')
 ```
-
 ```{r}
-#Only view w-values with significant p-value (<0.01)
+#Only view w-values with significant p-value (<0.05)
 wtest_coad_sig_wvalue <- wilcox_test_res
 
  for (i in seq_len(ncol(sampleScore_sub))) {
    for (j in seq_len(ncol(binary_factor_2))) {
-     if (wilcox.test(sampleScore_sub[, i] ~ binary_factor_2[,j], alternative="two.sided")$p.val < 0.01) {
+     if (wilcox.test(sampleScore_sub[, i] ~ binary_factor_2[,j], alternative="two.sided")$p.val < 0.05) {
        wtest_coad_sig_wvalue[j, i] <- wilcox.test(sampleScore_sub[, i] ~ binary_factor_2[,j],
                                                   alternative="two.sided")$statistic
      }
@@ -278,12 +265,19 @@ batch_char_ind_2 <- grep('analyte|analytes|portion|procurement|aliquot|uuid|barc
                   rownames(wtest_coad_sig_wvalue))
 wtest_coad_sig_wvalue <- wtest_coad_sig_wvalue[-batch_char_ind_2, ]
 ```
+```{r}
+for (i in seq_len(ncol(sampleScore_sub))) {
+  print(colnames(sampleScore_sub)[i])
+    xy <- wilcox.test(sampleScore_sub[,i] ~ binary_factor_2[,"patient.samples.sample.3.sample_type"], exact = FALSE)
+    print(xy)
+}
+```
 
 ```{r results='asis'}
 options(ztable.type='html')
 ztable(wtest_coad_sig_wvalue) %>%
   makeHeatmap(palette = 'Blues') %>%
-  print(caption='Cancer Sample W-test with p-values < 0.01')
+  print(caption='Cancer Sample W-test with p-values < 0.05')
 ```
 
 # Calculate Kruskal-Wallis Test for Multinomial Factor Variables
@@ -318,6 +312,17 @@ batch_char_ind <- grep('analyte|analytes|portion|procurement|aliquot|uuid|barcod
 kwtest_coad_wvalue <- kwtest_coad_wvalue[-batch_char_ind,]
 kwtest_coad_pvalue <- kwtest_coad_pvalue[-batch_char_ind,]
 ```
+
+```{r}
+for (i in seq_len(ncol(sampleScore_sub))) {
+  print(colnames(sampleScore_sub)[i])
+    xy <- pairwise.wilcox.test(sampleScore_sub[, i], new_factorTb[,"patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"], p.adjust.method = "bonferroni")
+    print(xy)
+}
+
+
+```
+
 
 ```{r figures-side-5, fig.show="hold", out.width="50%"}
 heatmap(as.matrix(kwtest_coad_wvalue), main = 'COAD Kruskal-Wallis Test Cancer Multinomial')
@@ -391,7 +396,7 @@ print(pA)
 ```
 
 ```{r warning=FALSE}
-graph_categorical(834, 1166, new_factorTb, sampleScore_sub,
+graph_categorical(834, 833, new_factorTb, sampleScore_sub,
                   "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status", 
                   "Score Plot for Microsatellite Status", "Microsatellite Status")
 
@@ -404,4 +409,3 @@ graph_categorical(834, 188, binary_factor_2, sampleScore_sub, 'patient.braf_gene
 ```{r}
 drawWordcloud(RAVmodel, 1172)
 ```
-
