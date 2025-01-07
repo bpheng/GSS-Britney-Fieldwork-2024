@@ -37,13 +37,13 @@ suppressPackageStartupMessages({
 
 ```{r message=FALSE}
 ## SummarizedExperiment object containing STAD dataset 
-stad_all <- readRDS("data/stad_cancer.rds") # 20,501 genes x 261 samples
+stad_cancer <- readRDS("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_cancer.rds") # 20,501 genes x 261 samples
 
 ## Only the top 15 validated RAVs
-sampleScore_sub <- read.csv("data/stad_cancer_sampleScore.csv", row.names = 1) # 261 samples x 15 RAVs
+sampleScore_sub <- read.csv("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_cancer_sampleScore.csv", row.names = 1) # 261 samples x 15 RAVs
 
 ## STAD categorical variables
-charTb <- read.csv("data/stad_cancer_char.csv", row.names = 1) # 261 samples x 182 metadata attributes (char)
+charTb <- read.csv("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_cancer_char.csv", row.names = 1) # 261 samples x 182 metadata attributes (char)
 ```
 
 ## Prepare data
@@ -66,6 +66,8 @@ nlevel <- sapply(factorTb, function(x) {
 factorTb_1_lv <- factorTb[nlevel == 1]
 factorTb_2_lv <- factorTb[nlevel == 2]
 factorTb_m_lv <- factorTb[nlevel > 2]
+
+table(factorTb_m_lv$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)
 ```
 
 # Binomial Wilcox Test
@@ -143,8 +145,9 @@ kruskal_wallis_res <- as.data.frame(matrix(nrow = ncol(factorTb_m_lv),
 rownames(kruskal_wallis_res) <- colnames(factorTb_m_lv)
 colnames(kruskal_wallis_res) <- colnames(sampleScore_sub)
 
-kwtest_stad_wvalue <- kruskal_wallis_res
-kwtest_stad_pvalue <- kruskal_wallis_res
+kw_stad_hvalue <- kruskal_wallis_res
+kw_stad_pvalue <- kruskal_wallis_res
+kw_stad_sig_hvalue <- kruskal_wallis_res
 
 for (i in seq_len(ncol(sampleScore_sub))) {
   for (j in seq_len(ncol(factorTb_m_lv))) {
@@ -153,22 +156,46 @@ for (i in seq_len(ncol(sampleScore_sub))) {
     
     ## Kruskal-Wallis Chi-squared value
     kw_val <-  kruskal_test$statistic
-    kwtest_stad_wvalue[j, i] <- kw_val
+    kw_stad_hvalue[j, i] <- kw_val
 
     ## p-value
     pval <-  kruskal_test$p.value
-    kwtest_stad_pvalue[j, i] <- pval
+    kw_stad_pvalue[j, i] <- pval
+    
+    ## Kruskal-Wallis Chi-squared value with significant p-value (<0.05)
+    if (kruskal_test$p.value < 0.05) {
+      kw_stad_sig_hvalue[j,i] <- kruskal_test$statistic
+    }
   }
 }
 
 batch_char_ind <- grep('analyte|analytes|portion|procurement|aliquot|uuid|barcode',
-                  rownames(kwtest_stad_wvalue))
-kwtest_stad_wvalue <- kwtest_stad_wvalue[-batch_char_ind,]
-kwtest_stad_pvalue <- kwtest_stad_pvalue[-batch_char_ind,]
+                  rownames(kw_stad_hvalue))
+kw_stad_hvalue <- kw_stad_hvalue[-batch_char_ind,]
+kw_stad_pvalue <- kw_stad_pvalue[-batch_char_ind,]
+kw_stad_sig_hvalue <- kw_stad_sig_hvalue[-batch_char_ind,]
+
+write.csv(kw_stad_hvalue, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/kw_stad_hvalue.csv")
+write.csv(kw_stad_pvalue, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/kw_stad_pvalue.csv")
+write.csv(kw_stad_sig_hvalue, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/kw_stad_sig_hvalue.csv")
+```
+
+```{r}
+for (i in seq_len(ncol(sampleScore_sub))) {
+  print(colnames(sampleScore_sub)[i])
+    xy <- pairwise.wilcox.test(sampleScore_sub[, i], factorTb_m_lv[,"patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"], p.adjust.method = "bonferroni")
+    print(xy)
+}
 ```
 
 ```{r figures-side-5, fig.show="hold", out.width="50%"}
-heatmap(as.matrix(kwtest_stad_wvalue), main = 'STAD All Samples: Kruskal-Wallis Test')
+heatmap(as.matrix(kw_stad_hvalue), main = 'STAD All Samples: Kruskal-Wallis Test')
 
-heatmap(as.matrix(kwtest_stad_wvalue[40:50,]), main = 'STAD Cancer Samples: Kruskal-Wallis Test')
+heatmap(as.matrix(kw_stad_hvalue[40:50,]), main = 'STAD Cancer Samples: Kruskal-Wallis Test')
+```
+
+```{r}
+kw_stad_sig_hvalue[1]
+
+kw_stad_sig_hvalue[47,which(!is.na(kw_stad_sig_hvalue[47,]) & kw_stad_sig_hvalue[47,] > 40)] #RAV324, RAV868, RAV2344, RAV517
 ```

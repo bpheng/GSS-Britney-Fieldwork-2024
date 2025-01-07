@@ -34,13 +34,13 @@ suppressPackageStartupMessages({
 ## Load UCEC All data
 ```{r message=FALSE}
 ## SummarizedExperiment object containing UCEC dataset 
-ucec_all <- readRDS("data/ucec_all.rds")
+ucec_all <- readRDS("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/UCEC All and Normal Samples/ucec_all.rds")
 
 ## Only the top 15 validated RAVs
-sampleScore_sub <- read.csv("data/ucec_all_sampleScore.csv", row.names = 1)
+sampleScore_sub <- read.csv("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/UCEC All and Normal Samples/ucec_all_sampleScore.csv", row.names = 1)
 
 ## UCEC categorical variables
-numTb <- read.csv("data/ucec_all_num.csv", row.names = 1)
+numTb <- read.csv("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/UCEC All and Normal Samples/ucec_all_num.csv", row.names = 1)
 ```
 
 # Numeric Variables

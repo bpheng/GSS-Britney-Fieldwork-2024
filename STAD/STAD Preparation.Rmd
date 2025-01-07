@@ -68,6 +68,7 @@ stad_rna_cancer <- getWithColData(stad2,
                                   mode = 'append')
 
 assay(stad_rna_cancer) <- log2(assay(stad_rna_cancer) + 1)
+saveRDS(stad_rna_cancer, file="/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_rna_cancer.rds")
 stad_cancer_meta <- colData(stad_rna_cancer)
 
 
@@ -77,6 +78,7 @@ stad_rna_normal <- getWithColData(stad2,
                                   mode = 'append')
 
 assay(stad_rna_normal) <- log2(assay(stad_rna_normal) + 1)
+saveRDS(stad_rna_normal, file="/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_rna_normal.rds")
 stad_normal_meta <- colData(stad_rna_normal)
 ```
 
@@ -85,17 +87,17 @@ stad_normal_meta <- colData(stad_rna_normal)
 # Cancer
 keep_attribute_ind <- which(colSums(!is.na(stad_cancer_meta)) > round(nrow(stad_cancer_meta)/10))
 stad_cancer <- stad_cancer_meta[keep_attribute_ind] %>% subset(select= -patientID)
-saveRDS(stad_cancer, "data/stad_cancer.rds")
+saveRDS(stad_cancer, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_cancer.rds")
 
 # Normal
 keep_attribute_ind <- which(colSums(!is.na(stad_normal_meta)) > round(nrow(stad_normal_meta)/10))
 stad_normal <- stad_normal_meta[keep_attribute_ind] %>% subset(select= -patientID)
-saveRDS(stad_normal, "data/stad_normal.rds")
+saveRDS(stad_normal, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_normal.rds")
 
 # All
 keep_attribute_ind <- which(colSums(!is.na(stad_meta)) > round(nrow(stad_meta)/10))
 stad_all <- stad_meta[keep_attribute_ind] %>% subset(select= -patientID)
-saveRDS(stad_all, "data/stad_all.rds")
+saveRDS(stad_all, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_all.rds")
 ```
 
 # STAD Sample Score
@@ -124,7 +126,7 @@ validated_ind <- validatedSignatures(validate_stad,
 
 ## Subset sampleScore
 stad_sampleScore_sub <- stad_sampleScore[,validated_ind] %>% as.data.frame()
-write.csv(stad_sampleScore_sub , "data/stad_all_sampleScore.csv") 
+write.csv(stad_sampleScore_sub , "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_all_sampleScore.csv") 
 
 # Cancer
 ## Sample scores only for the validated RAVs
@@ -138,7 +140,7 @@ validated_ind <- validatedSignatures(validate_stad,
 
 ## Subset sampleScore
 stad_cancer_sampleScore_sub <- stad_cancer_sampleScore[,validated_ind] %>% as.data.frame()
-write.csv(stad_cancer_sampleScore_sub , "data/stad_cancer_sampleScore.csv") 
+write.csv(stad_cancer_sampleScore_sub , "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_cancer_sampleScore.csv") 
 
 
 # Normal
@@ -153,29 +155,29 @@ validated_ind <- validatedSignatures(validate_stad,
 
 ## Subset sampleScore
 stad_normal_sampleScore_sub <- stad_normal_sampleScore[,validated_ind] %>% as.data.frame()
-write.csv(stad_normal_sampleScore_sub , "data/stad_normal_sampleScore.csv") 
+write.csv(stad_normal_sampleScore_sub , "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_normal_sampleScore.csv") 
 ```
 
 ## Categorical and Numeric Variables
 ## Based on variable types
 ```{r}
-## Separate COAL All into two subsets: 
+## Separate STAD All into two subsets: 
 charcTb <- stad_all[, sapply(stad_all@listData, class) == 'character']
 numTb <- stad_all[, sapply(stad_all@listData, class) %in% c('numeric', 'integer')]
-write.csv(charcTb, "data/stad_all_char.csv", row.names = TRUE)
-write.csv(numTb, "data/stad_all_num.csv", row.names = TRUE)
+write.csv(charcTb, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_all_char.csv", row.names = TRUE)
+write.csv(numTb, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_all_num.csv", row.names = TRUE)
 
 ## Separate STAD Cancer into two subsets: 
 charcTb <- stad_cancer[, sapply(stad_cancer@listData, class) == 'character'] # 374 metadata attributes (char)
 numTb <- stad_cancer[, sapply(stad_cancer@listData, class) %in% c('numeric', 'integer')] # 283 samples x 328 metadata attributes (num)
-write.csv(charcTb, "data/stad_cancer_char.csv", row.names = TRUE)
-write.csv(numTb, "data/stad_cancer_num.csv", row.names = TRUE)
+write.csv(charcTb, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_cancer_char.csv", row.names = TRUE)
+write.csv(numTb, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_cancer_num.csv", row.names = TRUE)
 
 ## Separate STAD Normal into two subsets: 
 charcTb <- stad_normal[, sapply(stad_normal@listData, class) == 'character']
 numTb <- stad_normal[, sapply(stad_normal@listData, class) %in% c('numeric', 'integer')]
-write.csv(charcTb, "data/stad_normal_char.csv", row.names = TRUE)
-write.csv(numTb, "data/stad_normal_num.csv", row.names = TRUE)
+write.csv(charcTb, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_normal_char.csv", row.names = TRUE)
+write.csv(numTb, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_normal_num.csv", row.names = TRUE)
 ```
 
 

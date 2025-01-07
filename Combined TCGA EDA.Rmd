@@ -36,6 +36,15 @@ data <- curatedTCGAData(diseaseCode = c('COAD', 'STAD', 'UCEC'),
                         assays = 'RNASeq2Gene',
                         version = '2.1.1',
                         dry.run = FALSE)
+
+luad <- curatedTCGAData(diseaseCode = c('LUAD'),
+                        assays = 'RNASeq2Gene',
+                        version = '2.1.1',
+                        dry.run = FALSE)
+
+luad_cancer <- getWithColData(luad,
+                           '01_LUAD_RNASeq2Gene-20160128')
+
 ```
 
 ```{r}
@@ -55,13 +64,15 @@ assay(combined_data) <- log2(assay(combined_data) + 1)
 table(combined_data@colData@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)
 # 179 msi-h, 120 msi-l, 566 mss, 9 indeterminate
 
-tcga_dat <- combined_data[,combined_data@colData@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status %in% c('msi-h', 'mss')]
+combined_data_meta <- colData(combined_data)
 
-combined_data_meta <- colData(tcga_dat)
+saveRDS(combined_data, file = "data/combinedTCGAdata/combined_data.rds")
+
+
 ```
 
 ```{r message=FALSE}
-validate_combined_data <- validate(combined_dat, RAVmodel)
+validate_combined_data <- validate(combined_data, RAVmodel)
 heatmapTable(validate_combined_data, RAVmodel, num.out=10)
 
 #Validate each cancer type separately to compare
@@ -190,6 +201,16 @@ kw_coad_sig_wvalue <- kw_coad_sig_wvalue[-batch_char_ind,]
 
 kw_coad_sig_wvalue <- kw_coad_sig_wvalue[-which(rowSums(is.na(kw_coad_sig_wvalue)) >= 13),]
 ```
+
+```{r}
+for (i in seq_len(ncol(sampleScore_sub))) {
+  print(colnames(sampleScore_sub)[i])
+    xy <- pairwise.wilcox.test(sampleScore_sub[, i], new_factorTb[,"patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"], p.adjust.method = "bonferroni")
+    print(xy)
+}
+
+```
+
 
 ```{r results='asis'}
 options(ztable.type='html')

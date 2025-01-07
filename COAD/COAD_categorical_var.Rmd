@@ -33,16 +33,17 @@ suppressPackageStartupMessages({
 })
 ```
 
-## Load COAD All data
+## Load COAD Cancer data
+
 ```{r message=FALSE}
-## SummarizedExperiment object containing COAD dataset 
-coad_all <- readRDS("data/coad_all.rds")
+## SummarizedExperiment object containing COAD dataset
+coad_cancer <- readRDS("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/coad_cancer.rds")
 
 ## Only the top 15 validated RAVs
-sampleScore_sub <- read.csv("data/coad_all_sampleScore.csv", row.names = 1)
+sampleScore_sub <- read.csv("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/coad_cancer_sampleScore.csv", row.names = 1)
 
 ## COAD categorical variables
-charTb <- read.csv("data/coad_all_char.csv", row.names = 1)
+charTb <- read.csv("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/coad_cancer_char.csv", row.names = 1)
 ```
 
 ## Prepare data
@@ -142,8 +143,9 @@ kruskal_wallis_res <- as.data.frame(matrix(nrow = ncol(factorTb_m_lv),
 rownames(kruskal_wallis_res) <- colnames(factorTb_m_lv)
 colnames(kruskal_wallis_res) <- colnames(sampleScore_sub)
 
-kwtest_coad_wvalue <- kruskal_wallis_res
-kwtest_coad_pvalue <- kruskal_wallis_res
+kw_coad_hvalue <- kruskal_wallis_res
+kw_coad_pvalue <- kruskal_wallis_res
+kw_coad_sig_hvalue <- kruskal_wallis_res
 
 for (i in seq_len(ncol(sampleScore_sub))) {
   for (j in seq_len(ncol(factorTb_m_lv))) {
@@ -152,20 +154,36 @@ for (i in seq_len(ncol(sampleScore_sub))) {
     
     ## Kruskal-Wallis Chi-squared value
     kw_val <-  kruskal_test$statistic
-    kwtest_coad_wvalue[j, i] <- kw_val
+    kw_coad_hvalue[j, i] <- kw_val
 
     ## p-value
     pval <-  kruskal_test$p.value
-    kwtest_coad_pvalue[j, i] <- pval
+    kw_coad_pvalue[j, i] <- pval
+    
+    ## Kruskal-Wallis Chi-squared value with significant p-value (<0.05)
+    if (kruskal_test$p.value < 0.05) {
+      kw_coad_sig_hvalue[j,i] <- kruskal_test$statistic
+    }
   }
 }
 
 batch_char_ind <- grep('analyte|analytes|portion|procurement|aliquot|uuid|barcode',
-                  rownames(kwtest_coad_wvalue))
-kwtest_coad_wvalue <- kwtest_coad_wvalue[-batch_char_ind,]
-kwtest_coad_pvalue <- kwtest_coad_pvalue[-batch_char_ind,]
+                  rownames(kw_coad_hvalue))
+kw_coad_hvalue <- kw_coad_hvalue[-batch_char_ind,]
+kw_coad_pvalue <- kw_coad_pvalue[-batch_char_ind,]
+kw_coad_sig_hvalue <- kw_coad_sig_hvalue[-batch_char_ind,]
+
+write.csv(kw_coad_hvalue, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/kw_coad_hvalue.csv")
+write.csv(kw_coad_pvalue, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/kw_coad_pvalue.csv")
+write.csv(kw_coad_sig_hvalue, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/kw_coad_sig_hvalue.csv")
 ```
 
 ```{r figures-side-5, fig.show="hold", out.width="50%"}
-heatmap(as.matrix(kwtest_coad_wvalue), main = 'COAD All Samples: Kruskal-Wallis Test')
+heatmap(as.matrix(kw_coad_hvalue), main = 'COAD Cancer Samples: Kruskal-Wallis Test')
+```
+
+```{r}
+kw_coad_sig_wvalue[,]
+
+kw_coad_sig_wvalue[57,which(!is.na(kw_coad_sig_wvalue[57,]))] #RAV834, RAV190, RAV1166
 ```

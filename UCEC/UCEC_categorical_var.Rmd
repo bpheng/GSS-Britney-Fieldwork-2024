@@ -36,14 +36,14 @@ suppressPackageStartupMessages({
 ## Load UCEC All data
 
 ```{r message=FALSE}
-## SummarizedExperiment object containing UCEC dataset 
-ucec_all <- readRDS("data/ucec_cancer.rds")
+## SummarizedExperiment object containing UCEC dataset
+ucec_cancer <- readRDS("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/ucec_cancer.rds")
 
 ## Only the top 15 validated RAVs
-sampleScore_sub <- read.csv("data/ucec_cancer_sampleScore.csv", row.names = 1)
+sampleScore_sub <- read.csv("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/ucec_cancer_sampleScore.csv", row.names = 1)
 
 ## UCEC categorical variables
-charTb <- read.csv("data/ucec_cancer_char.csv", row.names = 1)
+charTb <- read.csv("/Users/bpheng/GSS-Britney-Fieldwork-2024/data/ucec_cancer_char.csv", row.names = 1)
 ```
 
 ## Prepare data
@@ -143,8 +143,9 @@ kruskal_wallis_res <- as.data.frame(matrix(nrow = ncol(factorTb_m_lv),
 rownames(kruskal_wallis_res) <- colnames(factorTb_m_lv)
 colnames(kruskal_wallis_res) <- colnames(sampleScore_sub)
 
-kwtest_ucec_wvalue <- kruskal_wallis_res
-kwtest_ucec_pvalue <- kruskal_wallis_res
+kw_ucec_hvalue <- kruskal_wallis_res
+kw_ucec_pvalue <- kruskal_wallis_res
+kw_ucec_sig_hvalue <- kruskal_wallis_res
 
 for (i in seq_len(ncol(sampleScore_sub))) {
   for (j in seq_len(ncol(factorTb_m_lv))) {
@@ -153,20 +154,46 @@ for (i in seq_len(ncol(sampleScore_sub))) {
     
     ## Kruskal-Wallis Chi-squared value
     kw_val <-  kruskal_test$statistic
-    kwtest_ucec_wvalue[j, i] <- kw_val
+    kw_ucec_hvalue[j, i] <- kw_val
 
     ## p-value
     pval <-  kruskal_test$p.value
-    kwtest_ucec_pvalue[j, i] <- pval
+    kw_ucec_pvalue[j, i] <- pval
+    
+    ## Kruskal-Wallis Chi-squared value with significant p-value (<0.05)
+    if (kruskal_test$p.value < 0.10) {
+      kw_ucec_sig_hvalue[j,i] <- kruskal_test$statistic
+    }
   }
 }
 
 batch_char_ind <- grep('analyte|analytes|portion|procurement|aliquot|uuid|barcode',
-                  rownames(kwtest_ucec_wvalue))
-kwtest_ucec_wvalue <- kwtest_ucec_wvalue[-batch_char_ind,]
-kwtest_ucec_pvalue <- kwtest_ucec_pvalue[-batch_char_ind,]
+                  rownames(kw_ucec_hvalue))
+kw_ucec_hvalue <- kw_ucec_hvalue[-batch_char_ind,]
+kw_ucec_pvalue <- kw_ucec_pvalue[-batch_char_ind,]
+kw_ucec_sig_hvalue <- kw_ucec_sig_hvalue[-batch_char_ind,]
+
+write.csv(kw_ucec_hvalue, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/kw_ucec_hvalue.csv")
+write.csv(kw_ucec_pvalue, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/kw_ucec_pvalue.csv")
+write.csv(kw_ucec_sig_hvalue, "/Users/bpheng/GSS-Britney-Fieldwork-2024/data/kw_ucec_sig_hvalue.csv")
 ```
 
 ```{r figures-side-5, fig.show="hold", out.width="50%"}
-heatmap(as.matrix(kwtest_ucec_wvalue), main = 'UCEC All Samples: Kruskal-Wallis Test')
+heatmap(as.matrix(kw_ucec_sig_hvalue), main = 'UCEC All Samples: Kruskal-Wallis Test')
+```
+
+```{r}
+for (i in seq_len(ncol(sampleScore_sub))) {
+  print(colnames(sampleScore_sub)[i])
+    xy <- pairwise.wilcox.test(sampleScore_sub[, i], factorTb_m_lv[,"patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"], p.adjust.method = "bonferroni")
+    print(xy)
+}
+
+```
+
+```{r}
+kw_ucec_sig_hvalue[1]
+kw_ucec_pvalue[39,]
+
+kw_ucec_sig_hvalue[39,which(!is.na(kw_ucec_sig_hvalue[39,]))] #RAV357
 ```

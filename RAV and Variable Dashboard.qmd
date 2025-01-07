@@ -1,0 +1,564 @@
+---
+title: "Deliverable 1: Dashboard of RAVs and Attributes for TCGA Colorectal (COAD) and Lung (LUAD) Cancers"
+author: "Britney Pheng"
+format:
+    html:
+        fontsize: 14pxs
+        toc: true
+        top-depth: 3
+output: html_document
+editor: visual
+---
+
+# Preparation
+
+Packages
+
+```{r setup, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+suppressPackageStartupMessages({
+  # BiocManager
+  library(GenomicSuperSignature)
+  library(curatedTCGAData)
+  library(MultiAssayExperiment)
+  library(TCGAutils)
+  library(ComplexHeatmap)
+  
+  # CRAN
+  library(tidyverse) # includes dplyr, ggplot2, magrittr, tidyr
+  library(magick)
+  library(wordcloud)
+  library(ztable)
+  library(metafolio)
+  library(randomForest)
+  library(caret)
+})
+```
+
+Load all Replicated Axes of Variation (RAVs) from GenomicSuperSignature package
+
+```{r message=FALSE, warning=FALSE}
+RAVmodel <- getModel('C2', load=TRUE)
+```
+
+Load TCGA Data for Colorectal and Lung Cancers from curatedTCGAData package
+
+```{r message=FALSE, warning=FALSE}
+data('diseaseCodes', package = "TCGAutils")
+
+data <- curatedTCGAData(
+    diseaseCode = c("COAD", "LUAD"), 
+    assays = "RNASeq2Gene", version = "2.0.1",
+    dry.run = FALSE
+)
+
+data <- TCGAsplitAssays(data, c("01", "11"))
+
+```
+
+Create Variables for RNA Sequencing Data and Clinical Attributes
+
+```{r warning=FALSE}
+coad_cancer <- getWithColData(data,
+                           '01_COAD_RNASeq2Gene-20160128')
+assay(coad_cancer) <- log2(assay(coad_cancer) + 1)
+coad_meta <- colData(coad_cancer)
+
+luad_cancer <- getWithColData(data,
+                           '01_LUAD_RNASeq2Gene-20160128')
+assay(luad_cancer) <- log2(assay(luad_cancer) + 1)
+luad_meta <- colData(luad_cancer)
+```
+
+# Function to Display Categorical Attributes' Score Plots
+
+```{r}
+graph_categorical <- function(RAV1, RAV2, factor.df, sampleScore.df, phenotype, graph_title = "Score Plot", legend_title = "Legend") {
+  
+  # Sanity Check 1: Check if RAVs are available; if RAVs don't exist in sampleScore.df, the function will error: "undefined columns selected"
+  # Sanity Check 2: phenotype is in factor.df
+  if(nlevels(factor.df[[phenotype]]) == 0) {
+    print("Phenotype is not in provided factor dataframe")
+  }
+  
+  sampleScore1 <- paste0("RAV", RAV1)
+  sampleScore2 <- paste0("RAV", RAV2)
+
+  new_df <- sampleScore.df[, c(sampleScore1, sampleScore2)]
+  colnames(new_df)[1] <- "sampleScore1"
+  colnames(new_df)[2] <- "sampleScore2"
+
+  new_df <- data.frame(new_df, factor.df)
+  plot_data <- new_df[which(!is.na(factor(new_df[[phenotype]]))),] #Filter out rows of the phenotype that are N/A
+  #print(plot_data[[phenotype]])
+
+  colors <- gg_color_hue(length(unique(plot_data[[phenotype]]))) # Count number of factor levels excluding NA
+  colors.toplot <- c(colors)
+
+  pA <- ggplot(plot_data,
+             aes(x = sampleScore1, y = sampleScore2, color = plot_data[[phenotype]])) +
+        geom_point() +
+        labs(title = graph_title) +
+        scale_color_manual(values = colors.toplot, name = legend_title) +
+        theme_bw() +
+        theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) +
+        geom_hline(yintercept = 0, linetype = 'dashed') +
+        geom_vline(xintercept = 0, linetype = 'dashed') +
+        xlab(sampleScore1) + ylab(sampleScore2)
+
+print(pA)
+}
+```
+
+
+# Exploratory Data Analysis (EDA)
+
+::: panel-tabset
+## COAD
+
+### Top Validated RAVs Heatmap for COAD Cancer Samples
+
+```{r message=FALSE, fig.width=10, fig.height=5}
+validated_coad_cancer <- validate(coad_cancer, RAVmodel)
+heatmapTable(validated_coad_cancer, RAVmodel, num.out=15, column_title = "COAD Cancer")
+```
+
+### Data Cleaning
+
+Select only clinical attributes with <10% missing data
+
+```{r message=FALSE, warning=FALSE}
+# Select columns with >10% completeness
+keep_attribute_ind <- which(colSums(!is.na(coad_meta)) > round(nrow(coad_meta)/10))
+
+coad_dat <- coad_meta[keep_attribute_ind] %>% subset(select=-patientID)
+```
+
+Calculate validation sample scores for each patient cancer sample and RAV combination for the top 15 validated RAVs
+
+```{r message=FALSE, warning=FALSE}
+# Calculate validation scores
+coad_all_sampleScores <- calculateScore(coad_cancer, RAVmodel)
+
+validated_ind <- validatedSignatures(validated_coad_cancer, RAVmodel, num.out = 15, scoreCutoff = 0.45, indexOnly = TRUE) #Using Pearson Coefficient
+
+## Subset sampleScore to join with MCPcounter
+coad_sampleScore <- coad_all_sampleScores[, validated_ind] %>% as.data.frame()
+```
+
+Parse variables out to numeric and categorical variables
+
+```{r message=FALSE, warning=FALSE}
+# Check for data types
+unique(sapply(coad_cancer@colData, type))
+
+coad_charcTb <- coad_dat[, sapply(coad_dat, class) == 'character']
+coad_numTb <- coad_dat[, sapply(coad_dat, class) %in% c('numeric', 'integer')]
+```
+
+```{r message=FALSE, warning=FALSE}
+# Convert to factor data type
+coad_factorTb <- coad_dat[, sapply(coad_dat, class) == 'character']
+
+#factorTb <- charcTb
+coad_factorTb[sapply(coad_factorTb, is.character)] <- lapply(coad_factorTb[sapply(coad_factorTb, is.character)], factor, exclude = NULL)
+```
+
+```{r message=FALSE, warning=FALSE}
+single_factor_ind <- c()
+binary_factor_ind <- c()
+multi_factor_ind <- c()
+
+# Testing factor grouping
+for (i in 1:length(coad_factorTb)) {
+  if (nlevels(coad_factorTb[,i]) == 1 | 
+      (nlevels(coad_factorTb[,i]) == 2 & any(is.na(levels(coad_factorTb[,i]))))
+      ) {
+    single_factor_ind <- c(single_factor_ind, i)
+    
+  } else if (nlevels(coad_factorTb[,i]) == 3 & any(is.na(levels(coad_factorTb[,i]))) |
+             (nlevels(coad_factorTb[,i]) == 2 & !any(is.na(levels(coad_factorTb[,i]))))
+          ) {
+    binary_factor_ind <- c(binary_factor_ind, i)
+    
+  } else {
+    multi_factor_ind <- c(multi_factor_ind, i)
+  }
+}
+
+coad_polytomous_factor <- coad_factorTb[,multi_factor_ind]
+coad_binary_factor <- coad_factorTb[,binary_factor_ind]
+coad_single_factor <- coad_factorTb[,single_factor_ind]
+```
+
+### Wilcoxon Test for Binary Variables
+
+```{r message=FALSE, warning=FALSE}
+wilcox_df <- as.data.frame(matrix(nrow = ncol(coad_binary_factor),
+                                ncol = ncol(coad_sampleScore)))
+
+rownames(wilcox_df) <- colnames(coad_binary_factor)
+colnames(wilcox_df) <- colnames(coad_sampleScore)
+
+coad_wilcox_stat <- wilcox_df
+coad_wilcox_pvalue <- wilcox_df
+coad_wilcox_sig_stat <- wilcox_df
+
+for (i in seq_len(ncol(coad_sampleScore))) {
+  for (j in seq_len(ncol(coad_binary_factor))) {
+    ## Wilcoxon test
+    wilcox_test <- wilcox.test(coad_sampleScore[, i] ~ coad_binary_factor[,j], alternative="two.sided")
+    
+    ## Statistic
+    stat <- wilcox_test$statistic
+    coad_wilcox_stat[j, i] <- stat
+    
+    ## p-value
+    pval <- wilcox_test$p.value
+    coad_wilcox_pvalue[j, i] <- pval
+      
+    ## Wilcoxon statistic with significant p-value (<0.01)
+    if (wilcox_test$p.value < 0.01) {
+      coad_wilcox_sig_stat[j,i] <- wilcox_test$statistic
+    }
+  }
+}
+
+batch_binary_ind <- grep('analyte|analytes|portion|procurement|aliquot|uuid|barcode',
+                  rownames(coad_wilcox_stat))
+coad_wilcox_stat <- coad_wilcox_stat[-batch_binary_ind,]
+coad_wilcox_pvalue <- coad_wilcox_pvalue[-batch_binary_ind,]
+coad_wilcox_sig_stat <- coad_wilcox_sig_stat[-batch_binary_ind,]
+coad_wilcox_sig_stat <- coad_wilcox_sig_stat[-which(rowSums(is.na(coad_wilcox_sig_stat)) >= 13),]
+```
+
+### Binary Variable Visualizations
+
+```{r fig.width=10, fit.height=5}
+heatmap(as.matrix(coad_wilcox_stat), main = 'COAD Cancer Binary Variables: Wilcoxon Test Statistics')
+```
+
+```{r results='asis'}
+options(ztable.type='html')
+ztable(coad_wilcox_sig_stat ) %>%
+  makeHeatmap(palette = 'Blues') %>%
+  print(caption='COAD Cancer Binary Variables with a Significant Wilcoxon Statistic (p-value < 0.01)')
+```
+
+Categorized by the COAD cancer binary variable "lymphatic invasion", the majority of sample scores for RAVs 832 and 833 are over 0.
+
+```{r warning=FALSE}
+graph_categorical(833, 832, coad_binary_factor, coad_sampleScore,
+                  "patient.lymphatic_invasion", 
+                  "Score Plot for Lymphatic Invasion", "Lymphatic Invasion")
+
+```
+
+RAV 833 has key phrases connected to possible "lymphatic invasion" data. See "T-Lymphocytes", "B Cells", "Immune System" in wordcloud.
+```{r warning=FALSE}
+drawWordcloud(RAVmodel, 833)
+```
+
+### Kruskal-Wallis Test for Polytomous Variables
+
+```{r message=FALSE, warning=FALSE}
+kw_df <- as.data.frame(matrix(nrow = ncol(coad_polytomous_factor),
+                                ncol = ncol(coad_sampleScore)))
+
+rownames(kw_df) <- colnames(coad_polytomous_factor)
+colnames(kw_df) <- colnames(coad_sampleScore)
+
+coad_kw_stat <- kw_df
+coad_kw_pvalue <- kw_df
+coad_kw_sig_stat <- kw_df
+
+for (i in seq_len(ncol(coad_sampleScore))) {
+  for (j in seq_len(ncol(coad_polytomous_factor))) {
+    ## Kruskal-Wallis Test
+    kruskal_test <- kruskal.test(coad_sampleScore[, i] ~ coad_polytomous_factor[,j])
+    
+    ## Kruskal-Wallis Statistic
+    kw_val <-  kruskal_test$statistic
+    coad_kw_stat[j, i] <- kw_val
+
+    ## p-value
+    pval <-  kruskal_test$p.value
+    coad_kw_pvalue[j, i] <- pval
+    
+    ## Kruskal-Wallis Statistic with significant p-value (<0.05)
+    if (kruskal_test$p.value < 0.05) {
+      coad_kw_sig_stat[j,i] <- kruskal_test$statistic
+    }
+  }
+}
+
+batch_polytomous_ind <- grep('analyte|analytes|portion|procurement|aliquot|uuid|barcode',
+                  rownames(coad_kw_stat))
+coad_kw_stat <- coad_kw_stat[-batch_polytomous_ind,]
+coad_kw_pvalue <- coad_kw_pvalue[-batch_polytomous_ind,]
+coad_kw_sig_stat <- coad_kw_sig_stat[-batch_polytomous_ind,]
+coad_kw_sig_stat <- coad_kw_sig_stat[-which(rowSums(is.na(coad_kw_sig_stat)) >= 13),]
+```
+
+### Polytomous Variable Visualizations
+
+```{r fig.width=10, fig.height=5}
+heatmap(as.matrix(coad_kw_stat), main = "COAD Cancer Polytomous Variables: Kruskal-Wallis Test Statistics")
+```
+
+```{r results='asis'}
+options(ztable.type='html')
+ztable(coad_kw_sig_stat) %>%
+  makeHeatmap(palette = 'Blues') %>%
+  print(caption='COAD Cancer Polytomous Variables with a Significant Kruskal-Wallis Statistic (p-value < 0.05)')
+```
+
+The score plot shows factor level clustering for the COAD cancer attribute, "microsatellite instability test results". There is a distinction between the MSI-H (microsatellite instability - high) versus the MSS (microsatellite stable) and MSI-L (microsatellite instability - low) sample scores.
+
+```{r warning=FALSE}
+graph_categorical(834, 190, coad_factorTb, coad_sampleScore,
+                  "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status", 
+                  "Score Plot for Microsatellite Status", "Microsatellite Status")
+
+```
+
+RAVs 834 and 190 have statistically significant Kruskal-Wallis values for the "microsatellite instability test results" attribute.
+```{r warning=FALSE}
+drawWordcloud(RAVmodel, 834)
+```
+
+```{r warning=FALSE}
+drawWordcloud(RAVmodel, 190)
+```
+
+### Confirmation of RAV Significance for Variable of Interest
+See significant p-values for RAVs 834, 190, and 1166
+```{r warning=FALSE}
+for (i in seq_len(ncol(coad_sampleScore))) {
+  print(colnames(coad_sampleScore)[i])
+    xy <- pairwise.wilcox.test(coad_sampleScore[, i], coad_factorTb[,"patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"], p.adjust.method = "bonferroni")
+    print(xy)
+}
+
+```
+
+## LUAD
+
+### Top Validated RAVs Heatmap for LUAD Cancer Samples
+```{r message=FALSE, fig.width=10, fig.height=5}
+validated_luad_cancer <- validate(luad_cancer, RAVmodel)
+heatmapTable(validated_luad_cancer, RAVmodel, num.out=15, column_title = "LUAD Cancer")
+```
+
+### Data Cleaning
+
+Select only clinical attributes with <10% missing data
+
+```{r message=FALSE, warning=FALSE}
+# Select columns with >10% completeness
+keep_attribute_ind <- which(colSums(!is.na(luad_meta)) > round(nrow(luad_meta)/10))
+
+luad_dat <- luad_meta[keep_attribute_ind] %>% subset(select=-patientID)
+```
+
+Calculate validation sample scores for each patient cancer sample and RAV combination for the top 15 validated RAVs
+
+```{r message=FALSE, warning=FALSE}
+# Calculate validation scores
+luad_all_sampleScores <- calculateScore(luad_cancer, RAVmodel)
+
+validated_ind <- validatedSignatures(validated_luad_cancer, RAVmodel, num.out = 15, scoreCutoff = 0.45, indexOnly = TRUE) #Using Pearson Coefficient
+
+## Subset sampleScore to join with MCPcounter
+luad_sampleScore <- luad_all_sampleScores[, validated_ind] %>% as.data.frame()
+```
+
+Parse variables out to numeric and categorical variables
+
+```{r message=FALSE, warning=FALSE}
+# Check for data types
+unique(sapply(luad_cancer@colData, type))
+
+luad_charcTb <- luad_dat[, sapply(luad_dat, class) == 'character']
+luad_numTb <- luad_dat[, sapply(luad_dat, class) %in% c('numeric', 'integer')]
+```
+
+```{r message=FALSE, warning=FALSE}
+# Convert to factor data type
+luad_factorTb <- luad_dat[, sapply(luad_dat, class) == 'character']
+
+#factorTb <- charcTb
+luad_factorTb[sapply(luad_factorTb, is.character)] <- lapply(luad_factorTb[sapply(luad_factorTb, is.character)], factor, exclude = NULL)
+```
+
+```{r message=FALSE, warning=FALSE}
+single_factor_ind <- c()
+binary_factor_ind <- c()
+multi_factor_ind <- c()
+
+# Testing factor grouping
+for (i in 1:length(luad_factorTb)) {
+  if (nlevels(luad_factorTb[,i]) == 1 | 
+      (nlevels(luad_factorTb[,i]) == 2 & any(is.na(levels(luad_factorTb[,i]))))
+      ) {
+    single_factor_ind <- c(single_factor_ind, i)
+    
+  } else if (nlevels(luad_factorTb[,i]) == 3 & any(is.na(levels(luad_factorTb[,i]))) |
+             (nlevels(luad_factorTb[,i]) == 2 & !any(is.na(levels(luad_factorTb[,i]))))
+          ) {
+    binary_factor_ind <- c(binary_factor_ind, i)
+    
+  } else {
+    multi_factor_ind <- c(multi_factor_ind, i)
+  }
+}
+
+luad_polytomous_factor <- luad_factorTb[,multi_factor_ind]
+luad_binary_factor <- luad_factorTb[,binary_factor_ind]
+luad_single_factor <- luad_factorTb[,single_factor_ind]
+```
+
+### Wilcoxon Test for Binary Variables
+```{r message=FALSE, warning=FALSE}
+wilcox_df <- as.data.frame(matrix(nrow = ncol(luad_binary_factor),
+                                ncol = ncol(luad_sampleScore)))
+
+rownames(wilcox_df) <- colnames(luad_binary_factor)
+colnames(wilcox_df) <- colnames(luad_sampleScore)
+
+luad_wilcox_stat <- wilcox_df
+luad_wilcox_pvalue <- wilcox_df
+luad_wilcox_sig_stat <- wilcox_df
+
+for (i in seq_len(ncol(luad_sampleScore))) {
+  for (j in seq_len(ncol(luad_binary_factor))) {
+    ## Wilcoxon test
+    wilcox_test <- wilcox.test(luad_sampleScore[, i] ~ luad_binary_factor[,j], alternative="two.sided")
+    
+    ## Statistic
+    stat <- wilcox_test$statistic
+    luad_wilcox_stat[j, i] <- stat
+    
+    ## p-value
+    pval <- wilcox_test$p.value
+    luad_wilcox_pvalue[j, i] <- pval
+      
+    ## Wilcoxon statistic with significant p-value (<0.01)
+    if (wilcox_test$p.value < 0.05) {
+      luad_wilcox_sig_stat[j,i] <- wilcox_test$statistic
+    }
+  }
+}
+
+batch_binary_ind <- grep('analyte|analytes|portion|procurement|aliquot|uuid|barcode',
+                  rownames(luad_wilcox_stat))
+luad_wilcox_stat <- luad_wilcox_stat[-batch_binary_ind,]
+luad_wilcox_pvalue <- luad_wilcox_pvalue[-batch_binary_ind,]
+luad_wilcox_sig_stat <- luad_wilcox_sig_stat[-batch_binary_ind,]
+luad_wilcox_sig_stat <- luad_wilcox_sig_stat[-which(rowSums(is.na(luad_wilcox_sig_stat)) >= 10),]
+```
+
+### Binary Variable Visualizations
+```{r fig.width=10, fit.height=5}
+heatmap(as.matrix(luad_wilcox_stat), main = 'LUAD Cancer Binary Variables: Wilcoxon Test Statistics')
+```
+
+```{r results='asis'}
+options(ztable.type='html')
+ztable(luad_wilcox_sig_stat) %>%
+  makeHeatmap(palette = 'Blues') %>%
+  print(caption='LUAD Cancer Binary Variables with a Significant Wilcoxon Statistic (p-value < 0.01)')
+```
+
+Categorized by the LUAD cancer binary variable "transversion status", the sample scores for RAVs 1065 and 1668 seem to have an inverse linear relationship.
+```{r warning=FALSE}
+graph_categorical(1668, 1065, luad_binary_factor, luad_sampleScore,
+                  "Transversion.High.Low",
+                  "Score Plot for Transversion ", "Transversion Status")
+
+```
+
+RAV 1065 has key phrases connected to lung cancer clinical attributes.
+```{r warning=FALSE}
+drawWordcloud(RAVmodel, 1065)
+```
+
+### Kruskal-Wallis Test for Polytomous Variables
+```{r message=FALSE, warning=FALSE}
+kw_df <- as.data.frame(matrix(nrow = ncol(luad_polytomous_factor),
+                                ncol = ncol(luad_sampleScore)))
+
+rownames(kw_df) <- colnames(luad_polytomous_factor)
+colnames(kw_df) <- colnames(luad_sampleScore)
+
+luad_kw_stat <- kw_df
+luad_kw_pvalue <- kw_df
+luad_kw_sig_stat <- kw_df
+
+for (i in seq_len(ncol(luad_sampleScore))) {
+  for (j in seq_len(ncol(luad_polytomous_factor))) {
+    ## Kruskal-Wallis Test
+    kruskal_test <- kruskal.test(luad_sampleScore[, i] ~ luad_polytomous_factor[,j])
+    
+    ## Kruskal-Wallis Statistic
+    kw_val <-  kruskal_test$statistic
+    luad_kw_stat[j, i] <- kw_val
+
+    ## p-value
+    pval <-  kruskal_test$p.value
+    luad_kw_pvalue[j, i] <- pval
+    
+    ## Kruskal-Wallis Statistic with significant p-value (<0.05)
+    if (kruskal_test$p.value < 0.05) {
+    luad_kw_sig_stat[j,i] <- kruskal_test$statistic
+    }
+  }
+}
+
+batch_polytomous_ind <- grep('analyte|analytes|portion|procurement|aliquot|uuid|barcode',
+                  rownames(luad_kw_stat))
+luad_kw_stat <- luad_kw_stat[-batch_polytomous_ind,]
+luad_kw_pvalue <- luad_kw_pvalue[-batch_polytomous_ind,]
+luad_kw_sig_stat <- luad_kw_sig_stat[-batch_polytomous_ind,]
+luad_kw_sig_stat <- luad_kw_sig_stat[-which(rowSums(is.na(luad_kw_sig_stat)) >= 10),]
+```
+
+### Polytomous Variable Visualizations
+```{r fig.width=10, fig.height=5}
+heatmap(as.matrix(luad_kw_stat), main = "LUAD Cancer Polytomous Variables: Kruskal-Wallis Test Statistics")
+```
+
+```{r results='asis'}
+options(ztable.type='html')
+ztable(luad_kw_sig_stat) %>%
+  makeHeatmap(palette = 'Blues') %>%
+  print(caption='LUAD Cancer Polytomous Variables with a Significant Kruskal-Wallis Statistic (p-value < 0.05)')
+```
+
+The score plot shows sample scores for the LUAD cancer attribute, "tobacco smoking history" that were positive for RAV 2538, but negative for RAV 1065 and vice versa, negative for RAV 2538, but positive for RAV 1065.
+```{r warning=FALSE}
+graph_categorical(1065, 2538, luad_factorTb, luad_sampleScore,
+                  "patient.tobacco_smoking_history",
+                  "Score Plot for Tobacco Smoking History", "Tobacco Smoking History")
+
+```
+
+RAV 814 additionally had statistically significant Kruskal-Wallis values for the "tobacco smoking history" attribute.
+```{r warning=FALSE}
+drawWordcloud(RAVmodel, 814)
+```
+
+### Confirmation of RAV Significance for Variable of Interest
+See significant p-values for RAVs 814, 1065, 2538, 1668, and 220
+```{r warning=FALSE}
+for (i in seq_len(ncol(luad_sampleScore))) {
+  print(colnames(luad_sampleScore)[i])
+    xy <- pairwise.wilcox.test(luad_sampleScore[, i], luad_factorTb[,"patient.tobacco_smoking_history"], p.adjust.method = "bonferroni")
+    print(xy)
+}
+
+```
+
+:::

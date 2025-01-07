@@ -293,3 +293,92 @@ rpart.plot(train_msi_model)
 plot(rf)
 ```
 
+```{r}
+labels <- factorTb_testdata[[target_attr]]
+nonNALabels <- which(!is.na(labels))
+data <- sampleScore_sub_testdata[,validated_RAVs]
+
+test_data <- data[nonNALabels,]
+test_labels <- labels[nonNALabels]
+
+test_data$MSI_Status <- test_labels
+```
+
+```{r}
+p2 <- predict(rf, test_data)
+confusionMatrix(p2, test_data$MSI_Status)
+```
+
+## STAD
+
+```{r include=FALSE}
+stad_rna_cancer <- readRDS(file="/Users/bpheng/GSS-Britney-Fieldwork-2024/data/stad_rna_cancer.rds")
+
+stad_rna_cancer <- stad_rna_cancer[,stad_rna_cancer@colData@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status %in% c('msi-h', 'mss')]
+
+stad.meta <- colData(stad_rna_cancer)
+stad.sampleScore <- calculateScore(stad_rna_cancer, RAVmodel) %>% as.data.frame()
+```
+
+```{r include=FALSE}
+target_attr <- "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"
+
+var_type <- stad.meta@listData
+unique(sapply(var_type, type))
+charcTb <- stad.meta[, sapply(var_type, class) == 'character']
+factorTb <- charcTb
+factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor)
+
+levels(factorTb@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)[levels(factorTb@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status) == "msi-h"] <- "msi"
+
+labels <- factorTb[[target_attr]]
+nonNALabels <- which(!is.na(labels))
+stad_data <- stad.sampleScore[,validated_RAVs]
+
+new_stad_data <- stad_data[nonNALabels,]
+new_labels <- labels[nonNALabels]
+new_stad_data$msi <- new_labels
+
+```
+
+```{r}
+stad.prediction <- predict(rf, new_stad_data)
+confusionMatrix(stad.prediction, new_stad_data$msi)
+```
+
+#UCEC
+
+```{r include=FALSE}
+ucec_rna_cancer <- readRDS(file="/Users/bpheng/GSS-Britney-Fieldwork-2024/data/ucec_rna_cancer.rds")
+
+ucec_rna_cancer <- ucec_rna_cancer[,ucec_rna_cancer@colData@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status %in% c('msi-h', 'mss')]
+
+ucec.meta <- colData(ucec_rna_cancer)
+ucec.sampleScore <- calculateScore(ucec_rna_cancer, RAVmodel) %>% as.data.frame()
+```
+
+```{r include=FALSE}
+target_attr <- "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"
+
+var_type <- ucec.meta@listData
+unique(sapply(var_type, type))
+charcTb <- ucec.meta[, sapply(var_type, class) == 'character']
+factorTb <- charcTb
+factorTb[sapply(factorTb, is.character)] <- lapply(factorTb[sapply(factorTb, is.character)], factor)
+
+levels(factorTb@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)[levels(factorTb@listData$patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status) == "msi-h"] <- "msi"
+
+labels <- factorTb[[target_attr]]
+nonNALabels <- which(!is.na(labels))
+ucec_data <- ucec.sampleScore[,validated_RAVs]
+
+new_ucec_data <- ucec_data[nonNALabels,]
+new_labels <- labels[nonNALabels]
+new_ucec_data$msi <- new_labels
+
+```
+
+```{r}
+ucec.prediction <- predict(rf, new_ucec_data)
+confusionMatrix(ucec.prediction, new_ucec_data$msi)
+```

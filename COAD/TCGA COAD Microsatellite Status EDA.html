@@ -1,0 +1,3030 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.4.555">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Sehyun Oh, Britney Pheng">
+<meta name="dcterms.date" content="2024-11-22">
+
+<title>TCGA COAD Microsatellite Status EDA</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="TCGA COAD Microsatellite Status EDA_files/libs/clipboard/clipboard.min.js"></script>
+<script src="TCGA COAD Microsatellite Status EDA_files/libs/quarto-html/quarto.js"></script>
+<script src="TCGA COAD Microsatellite Status EDA_files/libs/quarto-html/popper.min.js"></script>
+<script src="TCGA COAD Microsatellite Status EDA_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="TCGA COAD Microsatellite Status EDA_files/libs/quarto-html/anchor.min.js"></script>
+<link href="TCGA COAD Microsatellite Status EDA_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="TCGA COAD Microsatellite Status EDA_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="TCGA COAD Microsatellite Status EDA_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="TCGA COAD Microsatellite Status EDA_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="TCGA COAD Microsatellite Status EDA_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#initial-setup" id="toc-initial-setup" class="nav-link active" data-scroll-target="#initial-setup">Initial Setup</a>
+  <ul class="collapse">
+  <li><a href="#load-packages" id="toc-load-packages" class="nav-link" data-scroll-target="#load-packages">Load packages</a></li>
+  <li><a href="#load-ravmodel" id="toc-load-ravmodel" class="nav-link" data-scroll-target="#load-ravmodel">Load RAVmodel</a></li>
+  <li><a href="#select-coad-rna-metadata" id="toc-select-coad-rna-metadata" class="nav-link" data-scroll-target="#select-coad-rna-metadata">Select COAD RNA metadata</a></li>
+  </ul></li>
+  <li><a href="#heatmaptable-coad" id="toc-heatmaptable-coad" class="nav-link" data-scroll-target="#heatmaptable-coad">heatmapTable: COAD</a></li>
+  <li><a href="#subset" id="toc-subset" class="nav-link" data-scroll-target="#subset">Subset</a>
+  <ul class="collapse">
+  <li><a href="#filter-attributes" id="toc-filter-attributes" class="nav-link" data-scroll-target="#filter-attributes">Filter attributes</a></li>
+  <li><a href="#sparsity-plot" id="toc-sparsity-plot" class="nav-link" data-scroll-target="#sparsity-plot">Sparsity Plot</a></li>
+  </ul></li>
+  <li><a href="#separate-out-factor-variables-by-number-of-levels-1-2-3-not-including-na" id="toc-separate-out-factor-variables-by-number-of-levels-1-2-3-not-including-na" class="nav-link" data-scroll-target="#separate-out-factor-variables-by-number-of-levels-1-2-3-not-including-na">Separate out Factor Variables by number of levels (1, 2, 3+) not including NA</a></li>
+  <li><a href="#calculate-wilcoxon-test-for-binomial-factor-variables" id="toc-calculate-wilcoxon-test-for-binomial-factor-variables" class="nav-link" data-scroll-target="#calculate-wilcoxon-test-for-binomial-factor-variables">Calculate Wilcoxon Test for Binomial Factor Variables</a></li>
+  <li><a href="#calculate-kruskal-wallis-test-for-multinomial-factor-variables" id="toc-calculate-kruskal-wallis-test-for-multinomial-factor-variables" class="nav-link" data-scroll-target="#calculate-kruskal-wallis-test-for-multinomial-factor-variables">Calculate Kruskal-Wallis Test for Multinomial Factor Variables</a>
+  <ul class="collapse">
+  <li><a href="#function-to-display-categorical-attributes-score-plots" id="toc-function-to-display-categorical-attributes-score-plots" class="nav-link" data-scroll-target="#function-to-display-categorical-attributes-score-plots">Function to Display Categorical Attributes’ Score Plots</a></li>
+  </ul></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">TCGA COAD Microsatellite Status EDA</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Sehyun Oh, Britney Pheng </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">November 22, 2024</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="initial-setup" class="level2">
+<h2 class="anchored" data-anchor-id="initial-setup">Initial Setup</h2>
+<section id="load-packages" class="level3">
+<h3 class="anchored" data-anchor-id="load-packages">Load packages</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">suppressPackageStartupMessages</span>({</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="co"># BiocManager</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">library</span>(GenomicSuperSignature)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">library</span>(curatedTCGAData)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">library</span>(MultiAssayExperiment)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">library</span>(TCGAutils)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">library</span>(ComplexHeatmap)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="co"># CRAN</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">library</span>(tidyverse) <span class="co"># includes dplyr, ggplot2, magrittr, tidyr</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">library</span>(magick)</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">library</span>(wordcloud)</span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">library</span>(ztable)</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">library</span>(metafolio)</span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>})</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="load-ravmodel" class="level3">
+<h3 class="anchored" data-anchor-id="load-ravmodel">Load RAVmodel</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>RAVmodel <span class="ot">&lt;-</span> <span class="fu">getModel</span>(<span class="st">'C2'</span>, <span class="at">load=</span><span class="cn">TRUE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "downloading"</code></pre>
+</div>
+</div>
+</section>
+<section id="select-coad-rna-metadata" class="level3">
+<h3 class="anchored" data-anchor-id="select-coad-rna-metadata">Select COAD RNA metadata</h3>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>coad <span class="ot">&lt;-</span> <span class="fu">curatedTCGAData</span>(<span class="at">diseaseCode =</span> <span class="st">'COAD'</span>,</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">assays =</span> <span class="st">'RNA*'</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>                        <span class="at">version =</span> <span class="st">'2.0.1'</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>                        <span class="at">dry.run =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>coad_rna <span class="ot">&lt;-</span> <span class="fu">getWithColData</span>(coad,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>                            <span class="st">'COAD_RNASeq2Gene-20160128'</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="fu">assay</span>(coad_rna) <span class="ot">&lt;-</span> <span class="fu">log2</span>(<span class="fu">assay</span>(coad_rna) <span class="sc">+</span> <span class="dv">1</span>)</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(coad<span class="sc">$</span>patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+indeterminate         msi-h         msi-l           mss 
+            2            83            82           288 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="do">## Parse out cancer vs normal samples</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="fu">sampleTables</span>(coad)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>$`COAD_RNASeq2Gene-20160128`
+
+ 01  02  06  11 
+283   1   1  41 
+
+$`COAD_RNASeq2GeneNorm_illuminaga-20160128`
+
+ 01 
+191 
+
+$`COAD_RNASeq2GeneNorm_illuminahiseq-20160128`
+
+ 01  02  06  11 
+283   1   1  41 
+
+$`COAD_RNASeqGene-20160128`
+
+01 
+10 </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>coad2 <span class="ot">&lt;-</span> <span class="fu">TCGAsplitAssays</span>(coad, <span class="fu">c</span>(<span class="st">"01"</span>, <span class="st">"11"</span>))</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>coad_rna_cancer <span class="ot">&lt;-</span> <span class="fu">getWithColData</span>(coad2,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                           <span class="st">'01_COAD_RNASeq2Gene-20160128'</span>)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="fu">assay</span>(coad_rna_cancer) <span class="ot">&lt;-</span> <span class="fu">log2</span>(<span class="fu">assay</span>(coad_rna_cancer) <span class="sc">+</span> <span class="dv">1</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>coad_cancer <span class="ot">&lt;-</span> <span class="fu">colData</span>(coad_rna_cancer)</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>coad_rna_normal <span class="ot">&lt;-</span> <span class="fu">getWithColData</span>(coad2,</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>                           <span class="st">'11_COAD_RNASeq2Gene-20160128'</span>)</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="fu">assay</span>(coad_rna_normal) <span class="ot">&lt;-</span> <span class="fu">log2</span>(<span class="fu">assay</span>(coad_rna_normal) <span class="sc">+</span> <span class="dv">1</span>)</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>coad_normal <span class="ot">&lt;-</span> <span class="fu">colData</span>(coad_rna_normal)</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Checking if normal and cancer samples have different MSI status</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a>normal_tb <span class="ot">&lt;-</span> coad_normal <span class="sc">%&gt;%</span></span>
+<span id="cb8-15"><a href="#cb8-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.data.frame</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb8-16"><a href="#cb8-16" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(patientID, patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)</span>
+<span id="cb8-17"><a href="#cb8-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-18"><a href="#cb8-18" aria-hidden="true" tabindex="-1"></a>cancer_tb <span class="ot">&lt;-</span> coad_cancer <span class="sc">%&gt;%</span></span>
+<span id="cb8-19"><a href="#cb8-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as.data.frame</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb8-20"><a href="#cb8-20" aria-hidden="true" tabindex="-1"></a>  dplyr<span class="sc">::</span><span class="fu">select</span>(patientID, patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status)</span>
+<span id="cb8-21"><a href="#cb8-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-22"><a href="#cb8-22" aria-hidden="true" tabindex="-1"></a>combined_tb <span class="ot">&lt;-</span> <span class="fu">inner_join</span>(normal_tb, cancer_tb, <span class="at">by=</span><span class="st">"patientID"</span>) <span class="co"># All paired cancer and normal samples have the same MSI status</span></span>
+<span id="cb8-23"><a href="#cb8-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-24"><a href="#cb8-24" aria-hidden="true" tabindex="-1"></a><span class="co">#Because they are the same, we will only use the cancer (independent) samples</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="heatmaptable-coad" class="level1">
+<h1>heatmapTable: COAD</h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>validate_coad_rna <span class="ot">&lt;-</span> <span class="fu">validate</span>(coad_rna, RAVmodel)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>validate_coad_normal <span class="ot">&lt;-</span> <span class="fu">validate</span>(coad_rna_normal, RAVmodel)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>validate_coad_cancer <span class="ot">&lt;-</span> <span class="fu">validate</span>(coad_rna_cancer, RAVmodel)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="fu">heatmapTable</span>(validate_coad_rna, RAVmodel, <span class="at">num.out =</span> <span class="dv">10</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a><span class="fu">heatmapTable</span>(validate_coad_normal, RAVmodel, <span class="at">num.out =</span> <span class="dv">10</span>, <span class="at">column_title=</span><span class="st">"COAD Normal Samples"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>RAV1187 can be filtered based on GSEA_C2</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">heatmapTable</span>(validate_coad_cancer, RAVmodel, <span class="at">num.out=</span><span class="dv">10</span>, <span class="at">column_title=</span><span class="st">"COAD Cancer Samples"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>RAV61 can be filtered based on GSEA_C2</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="TCGA-COAD-Microsatellite-Status-EDA_files/figure-html/figures-side-1.png" class="img-fluid figure-img" style="width:50.0%"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="TCGA-COAD-Microsatellite-Status-EDA_files/figure-html/figures-side-2.png" class="img-fluid figure-img" style="width:50.0%"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="TCGA-COAD-Microsatellite-Status-EDA_files/figure-html/figures-side-3.png" class="img-fluid figure-img" style="width:50.0%"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="subset" class="level1">
+<h1>Subset</h1>
+<section id="filter-attributes" class="level2">
+<h2 class="anchored" data-anchor-id="filter-attributes">Filter attributes</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cancer</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>sparsity_summary <span class="ot">&lt;-</span> <span class="fu">table</span>(<span class="fu">colSums</span>(<span class="fu">is.na</span>(coad_cancer)))</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="co">#sparsity_summary</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="sparsity-plot" class="level2">
+<h2 class="anchored" data-anchor-id="sparsity-plot">Sparsity Plot</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Cancer</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">stack</span>(sparsity_summary)<span class="sc">$</span>ind,</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>     <span class="fu">stack</span>(sparsity_summary)<span class="sc">$</span>values)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="TCGA-COAD-Microsatellite-Status-EDA_files/figure-html/figures-side-3-1.png" class="img-fluid figure-img" style="width:50.0%"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Select columns with &gt;10% completeness</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Cancer</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>keep_attribute_ind <span class="ot">&lt;-</span> <span class="fu">which</span>(<span class="fu">colSums</span>(<span class="sc">!</span><span class="fu">is.na</span>(coad_cancer)) <span class="sc">&gt;</span> <span class="fu">round</span>(<span class="fu">nrow</span>(coad_cancer)<span class="sc">/</span><span class="dv">10</span>))</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>meta_subset <span class="ot">&lt;-</span> coad_cancer[keep_attribute_ind] <span class="sc">%&gt;%</span> <span class="fu">subset</span>(<span class="at">select=</span> <span class="sc">-</span>patientID)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Randomly select for 140 rows</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="co"># set.seed(1)</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="co"># random_sample_ind &lt;- sample(1:nrow(meta_sub1), 140)</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="co"># meta_sub2 &lt;- meta_sub1[random_sample_ind,]</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Check for data types in listData</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="fu">unique</span>(<span class="fu">sapply</span>(coad_cancer<span class="sc">@</span>listData, type))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "character" "integer"   "double"   </code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>charcTb <span class="ot">&lt;-</span> meta_subset[, <span class="fu">sapply</span>(meta_subset, class) <span class="sc">==</span> <span class="st">'character'</span>]</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>numTb <span class="ot">&lt;-</span> meta_subset[, <span class="fu">sapply</span>(meta_subset, class) <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">'numeric'</span>, <span class="st">'integer'</span>)]</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="co"># View numeric variables that have &lt;=4 unique values to determine if they should be converted to character variables</span></span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>addToFactors <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(numTb)) {</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">length</span>(<span class="fu">table</span>(numTb[i])) <span class="sc">&lt;=</span> <span class="dv">4</span>) {</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>    addToFactors <span class="ot">&lt;-</span> <span class="fu">c</span>(addToFactors, i)</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>charcTb <span class="ot">&lt;-</span> <span class="fu">c</span>(charcTb, numTb[addToFactors])</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>numTb <span class="ot">&lt;-</span> numTb[<span class="sc">-</span>addToFactors]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate validation scores</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>sampleScore <span class="ot">&lt;-</span> <span class="fu">calculateScore</span>(coad_rna_cancer, RAVmodel)</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>validated_ind <span class="ot">&lt;-</span> <span class="fu">validatedSignatures</span>(validate_coad_cancer, RAVmodel, <span class="at">num.out =</span> <span class="dv">15</span>, <span class="at">scoreCutoff =</span> <span class="fl">0.45</span>, <span class="at">indexOnly =</span> <span class="cn">TRUE</span>) <span class="co">#Using Pearson Coefficient</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>RAV61 can be filtered based on GSEA_C2</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>RAV438 can be filtered based on GSEA_C2</code></pre>
+</div>
+<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="do">## Subset sampleScore to join with MCPcounter</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>sampleScore_sub <span class="ot">&lt;-</span> sampleScore[, validated_ind] <span class="sc">%&gt;%</span> <span class="fu">as.data.frame</span>()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="separate-out-factor-variables-by-number-of-levels-1-2-3-not-including-na" class="level1">
+<h1>Separate out Factor Variables by number of levels (1, 2, 3+) not including NA</h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert to factor data type</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>factorTb <span class="ot">&lt;-</span> meta_subset[, <span class="fu">sapply</span>(meta_subset, class) <span class="sc">==</span> <span class="st">'character'</span>]</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="co">#factorTb &lt;- charcTb</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>factorTb[<span class="fu">sapply</span>(factorTb, is.character)] <span class="ot">&lt;-</span> <span class="fu">lapply</span>(factorTb[<span class="fu">sapply</span>(factorTb, is.character)], factor, <span class="at">exclude =</span> <span class="cn">NULL</span>)</span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a><span class="co">#any(is.na(levels(factorTb[,2])))</span></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>single_factor_ind <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>binary_factor_ind <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>multi_factor_ind <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Testing factor grouping</span></span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(factorTb)) {</span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">nlevels</span>(factorTb[,i]) <span class="sc">==</span> <span class="dv">1</span> <span class="sc">|</span> </span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a>      (<span class="fu">nlevels</span>(factorTb[,i]) <span class="sc">==</span> <span class="dv">2</span> <span class="sc">&amp;</span> <span class="fu">any</span>(<span class="fu">is.na</span>(<span class="fu">levels</span>(factorTb[,i]))))</span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>      ) {</span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>    single_factor_ind <span class="ot">&lt;-</span> <span class="fu">c</span>(single_factor_ind, i)</span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> <span class="cf">if</span> (<span class="fu">nlevels</span>(factorTb[,i]) <span class="sc">==</span> <span class="dv">3</span> <span class="sc">&amp;</span> <span class="fu">any</span>(<span class="fu">is.na</span>(<span class="fu">levels</span>(factorTb[,i]))) <span class="sc">|</span></span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a>             (<span class="fu">nlevels</span>(factorTb[,i]) <span class="sc">==</span> <span class="dv">2</span> <span class="sc">&amp;</span> <span class="sc">!</span><span class="fu">any</span>(<span class="fu">is.na</span>(<span class="fu">levels</span>(factorTb[,i]))))</span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a>          ) {</span>
+<span id="cb24-22"><a href="#cb24-22" aria-hidden="true" tabindex="-1"></a>    binary_factor_ind <span class="ot">&lt;-</span> <span class="fu">c</span>(binary_factor_ind, i)</span>
+<span id="cb24-23"><a href="#cb24-23" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb24-24"><a href="#cb24-24" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb24-25"><a href="#cb24-25" aria-hidden="true" tabindex="-1"></a>    multi_factor_ind <span class="ot">&lt;-</span> <span class="fu">c</span>(multi_factor_ind, i)</span>
+<span id="cb24-26"><a href="#cb24-26" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb24-27"><a href="#cb24-27" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb24-28"><a href="#cb24-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-29"><a href="#cb24-29" aria-hidden="true" tabindex="-1"></a>new_factorTb <span class="ot">&lt;-</span> factorTb[,multi_factor_ind]</span>
+<span id="cb24-30"><a href="#cb24-30" aria-hidden="true" tabindex="-1"></a>binary_factor <span class="ot">&lt;-</span> factorTb[,binary_factor_ind]</span>
+<span id="cb24-31"><a href="#cb24-31" aria-hidden="true" tabindex="-1"></a>single_factor <span class="ot">&lt;-</span> factorTb[,single_factor_ind]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="calculate-wilcoxon-test-for-binomial-factor-variables" class="level1">
+<h1>Calculate Wilcoxon Test for Binomial Factor Variables</h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Remove factors without enough y-observations</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>remove_index <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(binary_factor))) {</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>  x <span class="ot">&lt;-</span> <span class="fu">summary</span>(binary_factor[,i])[<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>]</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="fu">all</span>(x <span class="sc">&gt;</span> <span class="dv">1</span>)) {</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">#print(x)</span></span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true" tabindex="-1"></a>  } <span class="cf">else</span> {</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true" tabindex="-1"></a>    remove_index <span class="ot">&lt;-</span> <span class="fu">c</span>(remove_index, i)</span>
+<span id="cb25-12"><a href="#cb25-12" aria-hidden="true" tabindex="-1"></a>    <span class="co">#print(paste("index", i, "does not have enough observations"))</span></span>
+<span id="cb25-13"><a href="#cb25-13" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb25-14"><a href="#cb25-14" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb25-15"><a href="#cb25-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-16"><a href="#cb25-16" aria-hidden="true" tabindex="-1"></a>binary_factor_2 <span class="ot">&lt;-</span> binary_factor[,<span class="sc">-</span>remove_index]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>wilcox_test_res <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">matrix</span>(<span class="at">nrow =</span> <span class="fu">ncol</span>(binary_factor_2),</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>                                <span class="at">ncol =</span> <span class="fu">ncol</span>(sampleScore_sub)))</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a><span class="fu">rownames</span>(wilcox_test_res) <span class="ot">&lt;-</span> <span class="fu">colnames</span>(binary_factor_2)</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(wilcox_test_res) <span class="ot">&lt;-</span> <span class="fu">colnames</span>(sampleScore_sub)</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a>wtest_coad_wvalue <span class="ot">&lt;-</span> wilcox_test_res</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>wtest_coad_pvalue <span class="ot">&lt;-</span> wilcox_test_res</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(sampleScore_sub))) {</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(binary_factor_2))) {</span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a>    <span class="do">## wilcoxon test</span></span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a>    wilcox_test <span class="ot">&lt;-</span> <span class="fu">wilcox.test</span>(sampleScore_sub[, i] <span class="sc">~</span> binary_factor_2[,j], <span class="at">alternative=</span><span class="st">"two.sided"</span>)</span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a>      <span class="do">## W value</span></span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a>      wval <span class="ot">&lt;-</span> wilcox_test<span class="sc">$</span>statistic</span>
+<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a>      wtest_coad_wvalue[j, i] <span class="ot">&lt;-</span> wval</span>
+<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a>    <span class="do">## p-value</span></span>
+<span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a>      pval <span class="ot">&lt;-</span> wilcox_test<span class="sc">$</span>p.value</span>
+<span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a>      wtest_coad_pvalue[j, i] <span class="ot">&lt;-</span> pval</span>
+<span id="cb26-22"><a href="#cb26-22" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb26-23"><a href="#cb26-23" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb26-24"><a href="#cb26-24" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb26-25"><a href="#cb26-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-26"><a href="#cb26-26" aria-hidden="true" tabindex="-1"></a>batch_char_ind <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">'analyte|analytes|portion|procurement|aliquot|uuid|barcode'</span>,</span>
+<span id="cb26-27"><a href="#cb26-27" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">rownames</span>(wtest_coad_wvalue))</span>
+<span id="cb26-28"><a href="#cb26-28" aria-hidden="true" tabindex="-1"></a>wtest_coad_wvalue_2 <span class="ot">&lt;-</span> wtest_coad_wvalue[<span class="sc">-</span>batch_char_ind,]</span>
+<span id="cb26-29"><a href="#cb26-29" aria-hidden="true" tabindex="-1"></a>wtest_coad_pvalue_2 <span class="ot">&lt;-</span> wtest_coad_pvalue[<span class="sc">-</span>batch_char_ind,]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">heatmap</span>(<span class="fu">as.matrix</span>(wtest_coad_wvalue_2), <span class="at">main =</span> <span class="st">'COAD Wilcoxon Test Cancer Binomial'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="TCGA-COAD-Microsatellite-Status-EDA_files/figure-html/figures-side-4-1.png" class="img-fluid figure-img" style="width:50.0%"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Only view w-values with significant p-value (&lt;0.05)</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>wtest_coad_sig_wvalue <span class="ot">&lt;-</span> wilcox_test_res</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a> <span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(sampleScore_sub))) {</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>   <span class="cf">for</span> (j <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(binary_factor_2))) {</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>     <span class="cf">if</span> (<span class="fu">wilcox.test</span>(sampleScore_sub[, i] <span class="sc">~</span> binary_factor_2[,j], <span class="at">alternative=</span><span class="st">"two.sided"</span>)<span class="sc">$</span>p.val <span class="sc">&lt;</span> <span class="fl">0.05</span>) {</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>       wtest_coad_sig_wvalue[j, i] <span class="ot">&lt;-</span> <span class="fu">wilcox.test</span>(sampleScore_sub[, i] <span class="sc">~</span> binary_factor_2[,j],</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>                                                  <span class="at">alternative=</span><span class="st">"two.sided"</span>)<span class="sc">$</span>statistic</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>     }</span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>   }</span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a> }</span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a>na_ind <span class="ot">&lt;-</span> <span class="fu">apply</span>(wtest_coad_sig_wvalue, <span class="dv">1</span>, <span class="cf">function</span>(x) <span class="fu">all</span>(<span class="fu">is.na</span>(x)))</span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>wtest_coad_sig_wvalue <span class="ot">&lt;-</span> wtest_coad_sig_wvalue[<span class="sc">!</span>na_ind, ]</span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a>batch_char_ind_2 <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">'analyte|analytes|portion|procurement|aliquot|uuid|barcode'</span>,</span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">rownames</span>(wtest_coad_sig_wvalue))</span>
+<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a>wtest_coad_sig_wvalue <span class="ot">&lt;-</span> wtest_coad_sig_wvalue[<span class="sc">-</span>batch_char_ind_2, ]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(sampleScore_sub))) {</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="fu">colnames</span>(sampleScore_sub)[i])</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>    xy <span class="ot">&lt;-</span> <span class="fu">wilcox.test</span>(sampleScore_sub[,i] <span class="sc">~</span> binary_factor_2[,<span class="st">"patient.samples.sample.3.sample_type"</span>], <span class="at">exact =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(xy)</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "RAV188"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 50, p-value = 0.02926
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV1575"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 58, p-value = 0.06871
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV324"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 143, p-value = 0.05056
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV832"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 94, p-value = 0.8397
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV61"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 145, p-value = 0.04085
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV1008"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 51, p-value = 0.03276
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV868"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 135, p-value = 0.1106
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV64"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 145, p-value = 0.04085
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV220"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 56, p-value = 0.0561
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV834"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 110, p-value = 0.637
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV833"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 136, p-value = 0.1009
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV438"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 98, p-value = 0.9821
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV190"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 150, p-value = 0.02322
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV1166"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 124, p-value = 0.2708
+alternative hypothesis: true location shift is not equal to 0
+
+[1] "RAV192"
+
+    Wilcoxon rank sum test with continuity correction
+
+data:  sampleScore_sub[, i] by binary_factor_2[, "patient.samples.sample.3.sample_type"]
+W = 119, p-value = 0.3808
+alternative hypothesis: true location shift is not equal to 0</code></pre>
+</div>
+</div>
+<div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">ztable.type=</span><span class="st">'html'</span>)</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ztable</span>(wtest_coad_sig_wvalue) <span class="sc">%&gt;%</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">makeHeatmap</span>(<span class="at">palette =</span> <span class="st">'Blues'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="at">caption=</span><span class="st">'Cancer Sample W-test with p-values &lt; 0.05'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+
+<style>
+        table {
+              font-family: times ;
+color:  black ;
+text-align: right;}
+        th {
+              padding: 1px 1px 5px 5px;
+            }
+        td {
+             padding: 1px 1px 5px 5px; }
+      </style>
+
+<table align="center" style="border-collapse: collapse; caption-side:top; font-size:11pt;">
+<caption style="text-align:center;">
+Cancer Sample W-test with p-values &lt; 0.05
+</caption>
+<tbody><tr>
+<th style="border-left: 0px solid black;background-color: #FFFFFF;border-top: 2px solid gray;border-bottom: 1px solid gray;">
+&nbsp;
+</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV188</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV1575</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV324</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV832</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV61</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV1008</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV868</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV64</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV220</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV834</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV833</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV438</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV190</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV1166</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-right:0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV192</th>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; ">
+gender.x
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #4292C6;color: #FFFFFF;">
+8550.00
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+histological_type.x
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3358.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3183.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5630.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5713.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3270.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+5399.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5589.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3299.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3155.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6197.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.braf_gene_analysis_performed
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+4115.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+4203.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1437.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1895.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+4131.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1170.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1391.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+4318.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1687.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+4481.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+2029.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1228.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1074.00
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.clinical_cqcf.consent_or_death_status
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1639.00
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.clinical_cqcf.histological_type
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3715.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3512.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5896.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5904.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3631.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5681.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3653.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3239.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6327.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.drugs.drug.2.tx_on_clinical_trial
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+4.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.follow_ups.follow_up.2.new_tumor_events.new_tumor_event_after_initial_treatment
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+520.00
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.follow_ups.follow_up.2.person_neoplasm_cancer_status
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+909.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.follow_ups.follow_up.new_tumor_events.new_tumor_event.new_tumor_event_additional_surgery_procedure
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+192.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.follow_ups.follow_up.person_neoplasm_cancer_status
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+4111.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6348.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.follow_ups.follow_up.postoperative_rx_tx
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #4292C6;color: #FFFFFF;">
+8332.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.follow_ups.follow_up.vital_status
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+5457.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.gender
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #4292C6;color: #FFFFFF;">
+8550.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.histological_type
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3358.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3183.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5630.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5713.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3270.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+5399.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5589.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3299.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3155.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6197.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.kras_gene_analysis_performed
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6030.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6354.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3401.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3532.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3227.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5982.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3184.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+2896.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6306.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5633.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3760.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5692.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+2446.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #C6DBEF;">
+2661.00
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.loss_expression_of_mismatch_repair_proteins_by_ihc
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3816.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.lymphatic_invasion
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+5068.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5468.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #4292C6;color: #FFFFFF;">
+8027.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #4292C6;color: #FFFFFF;">
+7760.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+5361.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #4292C6;color: #FFFFFF;">
+8222.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #4292C6;color: #FFFFFF;">
+8182.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+5311.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #4292C6;color: #FFFFFF;">
+8360.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #4292C6;color: #FFFFFF;">
+8221.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.microsatellite_instability
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+202.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+546.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+12.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+126.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.non_nodal_tumor_deposits
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3767.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.perineural_invasion_present
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+2157.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+2113.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3376.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+2078.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3458.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3404.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+2143.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3387.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3383.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.tissue_prospective_collection_indicator
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5898.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5839.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+12470.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08519C;color: #FFFFFF;">
+11679.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5478.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+12038.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+12060.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5897.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08519C;color: #FFFFFF;">
+11111.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+12409.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6825.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+11838.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+11872.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+11940.00
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.tissue_retrospective_collection_indicator
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+12060.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+12119.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5488.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6279.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+12480.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5920.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5898.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+12061.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6847.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5549.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08519C;color: #FFFFFF;">
+11133.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6120.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6086.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6018.00
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.venous_invasion
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6567.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.vital_status
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5963.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+3961.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+3934.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3854.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5969.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3546.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3637.00
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.biospecimen_cqcf.consent_or_death_status
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1632.00
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.biospecimen_cqcf.ethnicity
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+76.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.biospecimen_cqcf.histological_type
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3715.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3512.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5896.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5904.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3631.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5681.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3653.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3239.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+6327.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.biospecimen_cqcf.path_confirm_report_attached
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+3984.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+3993.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1431.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1543.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+4102.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1422.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1453.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+4134.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1405.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3638.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1550.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1370.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #DEEBF7;">
+1744.00
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.biospecimen_cqcf.top_slide_submitted
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+3212.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+5109.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+5339.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+5548.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #C6DBEF;">
+2942.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.samples.sample.3.sample_type
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+50.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+143.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+145.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+51.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+145.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+150.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.samples.sample.oct_embedded
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+468.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.samples.sample.vial_number
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+705.00
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td colspan="16" align="left" style="font-size:9pt ;border-top: 1px solid black; border-bottom: hidden;">
+</td>
+</tr>
+</tbody></table>
+</section>
+<section id="calculate-kruskal-wallis-test-for-multinomial-factor-variables" class="level1">
+<h1>Calculate Kruskal-Wallis Test for Multinomial Factor Variables</h1>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>kruskal_wallis_res <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">matrix</span>(<span class="at">nrow =</span> <span class="fu">ncol</span>(new_factorTb),</span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>                                <span class="at">ncol =</span> <span class="fu">ncol</span>(sampleScore_sub)))</span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a><span class="fu">rownames</span>(kruskal_wallis_res) <span class="ot">&lt;-</span> <span class="fu">colnames</span>(new_factorTb)</span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(kruskal_wallis_res) <span class="ot">&lt;-</span> <span class="fu">colnames</span>(sampleScore_sub)</span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-7"><a href="#cb32-7" aria-hidden="true" tabindex="-1"></a>kwtest_coad_wvalue <span class="ot">&lt;-</span> kruskal_wallis_res</span>
+<span id="cb32-8"><a href="#cb32-8" aria-hidden="true" tabindex="-1"></a>kwtest_coad_pvalue <span class="ot">&lt;-</span> kruskal_wallis_res</span>
+<span id="cb32-9"><a href="#cb32-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-10"><a href="#cb32-10" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(sampleScore_sub))) {</span>
+<span id="cb32-11"><a href="#cb32-11" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (j <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(new_factorTb))) {</span>
+<span id="cb32-12"><a href="#cb32-12" aria-hidden="true" tabindex="-1"></a>    <span class="do">## Kruskal-Wallis Test</span></span>
+<span id="cb32-13"><a href="#cb32-13" aria-hidden="true" tabindex="-1"></a>    kruskal_test <span class="ot">&lt;-</span> <span class="fu">kruskal.test</span>(sampleScore_sub[, i] <span class="sc">~</span> new_factorTb[,j])</span>
+<span id="cb32-14"><a href="#cb32-14" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb32-15"><a href="#cb32-15" aria-hidden="true" tabindex="-1"></a>    <span class="do">## Kruskal-Wallis Chi-squared value</span></span>
+<span id="cb32-16"><a href="#cb32-16" aria-hidden="true" tabindex="-1"></a>    kw_val <span class="ot">&lt;-</span>  kruskal_test<span class="sc">$</span>statistic</span>
+<span id="cb32-17"><a href="#cb32-17" aria-hidden="true" tabindex="-1"></a>    kwtest_coad_wvalue[j, i] <span class="ot">&lt;-</span> kw_val</span>
+<span id="cb32-18"><a href="#cb32-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-19"><a href="#cb32-19" aria-hidden="true" tabindex="-1"></a>    <span class="do">## p-value</span></span>
+<span id="cb32-20"><a href="#cb32-20" aria-hidden="true" tabindex="-1"></a>    pval <span class="ot">&lt;-</span>  kruskal_test<span class="sc">$</span>p.value</span>
+<span id="cb32-21"><a href="#cb32-21" aria-hidden="true" tabindex="-1"></a>    kwtest_coad_pvalue[j, i] <span class="ot">&lt;-</span> pval</span>
+<span id="cb32-22"><a href="#cb32-22" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb32-23"><a href="#cb32-23" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb32-24"><a href="#cb32-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb32-25"><a href="#cb32-25" aria-hidden="true" tabindex="-1"></a>batch_char_ind <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">'analyte|analytes|portion|procurement|aliquot|uuid|barcode'</span>,</span>
+<span id="cb32-26"><a href="#cb32-26" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">rownames</span>(kwtest_coad_wvalue))</span>
+<span id="cb32-27"><a href="#cb32-27" aria-hidden="true" tabindex="-1"></a>kwtest_coad_wvalue <span class="ot">&lt;-</span> kwtest_coad_wvalue[<span class="sc">-</span>batch_char_ind,]</span>
+<span id="cb32-28"><a href="#cb32-28" aria-hidden="true" tabindex="-1"></a>kwtest_coad_pvalue <span class="ot">&lt;-</span> kwtest_coad_pvalue[<span class="sc">-</span>batch_char_ind,]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(sampleScore_sub))) {</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="fu">colnames</span>(sampleScore_sub)[i])</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>    xy <span class="ot">&lt;-</span> <span class="fu">pairwise.wilcox.test</span>(sampleScore_sub[, i], new_factorTb[,<span class="st">"patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"</span>], <span class="at">p.adjust.method =</span> <span class="st">"bonferroni"</span>)</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(xy)</span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "RAV188"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 0.16          -     -    
+msi-l 0.20          1.00  -    
+mss   0.20          1.00  1.00 
+
+P value adjustment method: bonferroni 
+[1] "RAV1575"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 0.20          -     -    
+msi-l 0.48          1.00  -    
+mss   0.25          1.00  1.00 
+
+P value adjustment method: bonferroni 
+[1] "RAV324"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 1             -     -    
+msi-l 1             1     -    
+mss   1             1     1    
+
+P value adjustment method: bonferroni 
+[1] "RAV832"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 0.89          -     -    
+msi-l 1.00          1.00  -    
+mss   1.00          0.99  1.00 
+
+P value adjustment method: bonferroni 
+[1] "RAV61"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 0.28          -     -    
+msi-l 0.16          1.00  -    
+mss   0.24          1.00  1.00 
+
+P value adjustment method: bonferroni 
+[1] "RAV1008"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 0.82          -     -    
+msi-l 0.71          1.00  -    
+mss   0.39          0.25  1.00 
+
+P value adjustment method: bonferroni 
+[1] "RAV868"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 1             -     -    
+msi-l 1             1     -    
+mss   1             1     1    
+
+P value adjustment method: bonferroni 
+[1] "RAV64"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 0.25          -     -    
+msi-l 0.63          1.00  -    
+mss   0.32          1.00  1.00 
+
+P value adjustment method: bonferroni 
+[1] "RAV220"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 0.25          -     -    
+msi-l 0.63          1.00  -    
+mss   0.27          1.00  1.00 
+
+P value adjustment method: bonferroni 
+[1] "RAV834"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h   msi-l
+msi-h 0.28          -       -    
+msi-l 1.00          1.3e-12 -    
+mss   1.00          &lt; 2e-16 1.00 
+
+P value adjustment method: bonferroni 
+[1] "RAV833"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 1.00          -     -    
+msi-l 1.00          1.00  -    
+mss   0.94          1.00  1.00 
+
+P value adjustment method: bonferroni 
+[1] "RAV438"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 1             -     -    
+msi-l 1             1     -    
+mss   1             1     1    
+
+P value adjustment method: bonferroni 
+[1] "RAV190"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h  msi-l 
+msi-h 1.0000        -      -     
+msi-l 0.7053        0.1356 -     
+mss   0.5525        0.0047 1.0000
+
+P value adjustment method: bonferroni 
+[1] "RAV1166"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 0.223         -     -    
+msi-l 1.000         0.111 -    
+mss   1.000         0.009 1.000
+
+P value adjustment method: bonferroni 
+[1] "RAV192"
+
+    Pairwise comparisons using Wilcoxon rank sum test with continuity correction 
+
+data:  sampleScore_sub[, i] and new_factorTb[, "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"] 
+
+      indeterminate msi-h msi-l
+msi-h 0.382         -     -    
+msi-l 1.000         0.408 -    
+mss   1.000         0.098 1.000
+
+P value adjustment method: bonferroni </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">heatmap</span>(<span class="fu">as.matrix</span>(kwtest_coad_wvalue), <span class="at">main =</span> <span class="st">'COAD Kruskal-Wallis Test Cancer Multinomial'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="TCGA-COAD-Microsatellite-Status-EDA_files/figure-html/figures-side-5-1.png" class="img-fluid figure-img" style="width:50.0%"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="co">#Only view kw-values with significant p-value (&lt;0.01)</span></span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>kwtest_coad_sig_wvalue <span class="ot">&lt;-</span> kruskal_wallis_res</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a> <span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(sampleScore_sub))) {</span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>   <span class="cf">for</span> (j <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">ncol</span>(new_factorTb))) {</span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>     <span class="cf">if</span> (<span class="fu">kruskal.test</span>(sampleScore_sub[, i] <span class="sc">~</span> new_factorTb[,j])<span class="sc">$</span>p.value <span class="sc">&lt;</span> <span class="fl">0.01</span>) {</span>
+<span id="cb36-7"><a href="#cb36-7" aria-hidden="true" tabindex="-1"></a>       kwtest_coad_sig_wvalue[j, i] <span class="ot">&lt;-</span> <span class="fu">kruskal.test</span>(sampleScore_sub[, i] <span class="sc">~</span> new_factorTb[,j])<span class="sc">$</span>statistic</span>
+<span id="cb36-8"><a href="#cb36-8" aria-hidden="true" tabindex="-1"></a>     }</span>
+<span id="cb36-9"><a href="#cb36-9" aria-hidden="true" tabindex="-1"></a>   }</span>
+<span id="cb36-10"><a href="#cb36-10" aria-hidden="true" tabindex="-1"></a> }</span>
+<span id="cb36-11"><a href="#cb36-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb36-12"><a href="#cb36-12" aria-hidden="true" tabindex="-1"></a>batch_char_ind <span class="ot">&lt;-</span> <span class="fu">grep</span>(<span class="st">'analyte|analytes|portion|procurement|aliquot|uuid|barcode'</span>,</span>
+<span id="cb36-13"><a href="#cb36-13" aria-hidden="true" tabindex="-1"></a>                  <span class="fu">rownames</span>(kwtest_coad_sig_wvalue))</span>
+<span id="cb36-14"><a href="#cb36-14" aria-hidden="true" tabindex="-1"></a>kwtest_coad_sig_wvalue <span class="ot">&lt;-</span> kwtest_coad_sig_wvalue[<span class="sc">-</span>batch_char_ind, ]</span>
+<span id="cb36-15"><a href="#cb36-15" aria-hidden="true" tabindex="-1"></a>na_ind <span class="ot">&lt;-</span> <span class="fu">apply</span>(kwtest_coad_sig_wvalue, <span class="dv">1</span>, <span class="cf">function</span>(x) <span class="fu">all</span>(<span class="fu">is.na</span>(x)))</span>
+<span id="cb36-16"><a href="#cb36-16" aria-hidden="true" tabindex="-1"></a>kwtest_coad_sig_wvalue <span class="ot">&lt;-</span> kwtest_coad_sig_wvalue[<span class="sc">!</span>na_ind, ]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="fu">options</span>(<span class="at">ztable.type=</span><span class="st">'html'</span>)</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="fu">ztable</span>(kwtest_coad_sig_wvalue) <span class="sc">%&gt;%</span></span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">makeHeatmap</span>(<span class="at">palette =</span> <span class="st">'Blues'</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="at">caption=</span><span class="st">'Cancer Sample Kruskal-Wallis Test with p-values &lt; 0.01'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+
+<style>
+        table {
+              font-family: times ;
+color:  black ;
+text-align: right;}
+        th {
+              padding: 1px 1px 5px 5px;
+            }
+        td {
+             padding: 1px 1px 5px 5px; }
+      </style>
+
+<table align="center" style="border-collapse: collapse; caption-side:top; font-size:11pt;">
+<caption style="text-align:center;">
+Cancer Sample Kruskal-Wallis Test with p-values &lt; 0.01
+</caption>
+<tbody><tr>
+<th style="border-left: 0px solid black;background-color: #FFFFFF;border-top: 2px solid gray;border-bottom: 1px solid gray;">
+&nbsp;
+</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV188</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV1575</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV324</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV832</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV61</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV1008</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV868</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV64</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV220</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV834</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV833</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV438</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV190</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV1166</th>
+<th <th="" align="center" style="font-weight: normal;border-left: 0px solid black;border-right:0px solid black;border-bottom: 1px solid gray;border-top: 2px solid gray;">RAV192</th>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; ">
+patient.clinical_cqcf.frozen_specimen_anatomic_site
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="left" style="border-left: 0px solid black;">
+NA
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #C6DBEF;">
+36.50
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.icd_10
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="left" style="border-left: 0px solid black;border-top: hidden;">
+NA
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+27.72
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.icd_o_3_site
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="left" style="border-left: 0px solid black;border-top: hidden;">
+NA
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+27.72
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.tissue_source_site
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #2171B5;color: #FFFFFF;">
+72.94
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #4292C6;color: #FFFFFF;">
+63.95
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08519C;color: #FFFFFF;">
+87.18
+</td>
+<td align="left" style="border-left: 0px solid black;border-top: hidden;">
+NA
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #6BAED6;color: #FFFFFF;">
+51.60
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #4292C6;color: #FFFFFF;">
+71.24
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+97.30
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #4292C6;color: #FFFFFF;">
+68.38
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #2171B5;color: #FFFFFF;">
+73.45
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #2171B5;color: #FFFFFF;">
+82.22
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08519C;color: #FFFFFF;">
+84.38
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #9ECAE1;">
+50.09
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #2171B5;color: #FFFFFF;">
+77.32
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+95.18
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="left" style="border-left: 0px solid black;border-top: hidden;">
+NA
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #08306B;color: #FFFFFF;">
+100.13
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+13.80
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+12.26
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.biospecimen_cqcf.frozen_specimen_anatomic_site
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="left" style="border-left: 0px solid black;border-top: hidden;">
+NA
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+28.59
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.biospecimen_cqcf.site_of_disease_description
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="left" style="border-left: 0px solid black;border-top: hidden;">
+NA
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #DEEBF7;">
+28.59
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td style="border-left: 0px solid black; border-top: hidden;">
+patient.biospecimen_cqcf.vessel_used
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="left" style="border-left: 0px solid black;border-top: hidden;">
+NA
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+12.96
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+14.32
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+13.65
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+<td align="right" style="border-left: 0px solid black;border-right:0px solid black;border-top: hidden;background-color: #F7FBFF;">
+</td>
+</tr>
+<tr>
+<td colspan="16" align="left" style="font-size:9pt ;border-top: 1px solid black; border-bottom: hidden;">
+</td>
+</tr>
+</tbody></table>
+<section id="function-to-display-categorical-attributes-score-plots" class="level2">
+<h2 class="anchored" data-anchor-id="function-to-display-categorical-attributes-score-plots">Function to Display Categorical Attributes’ Score Plots</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a>graph_categorical <span class="ot">&lt;-</span> <span class="cf">function</span>(RAV1, RAV2, factor.df, sampleScore.df, phenotype, <span class="at">graph_title =</span> <span class="st">"Score Plot"</span>, <span class="at">legend_title =</span> <span class="st">"Legend"</span>) {</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Sanity Check 1: Check if RAVs are available; if RAVs don't exist in sampleScore.df, the function will error: "undefined columns selected"</span></span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Sanity Check 2: phenotype is in factor.df</span></span>
+<span id="cb38-5"><a href="#cb38-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span>(<span class="fu">nlevels</span>(factor.df[[phenotype]]) <span class="sc">==</span> <span class="dv">0</span>) {</span>
+<span id="cb38-6"><a href="#cb38-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(<span class="st">"Phenotype is not in provided factor dataframe"</span>)</span>
+<span id="cb38-7"><a href="#cb38-7" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb38-8"><a href="#cb38-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb38-9"><a href="#cb38-9" aria-hidden="true" tabindex="-1"></a>  sampleScore1 <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="st">"RAV"</span>, RAV1)</span>
+<span id="cb38-10"><a href="#cb38-10" aria-hidden="true" tabindex="-1"></a>  sampleScore2 <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="st">"RAV"</span>, RAV2)</span>
+<span id="cb38-11"><a href="#cb38-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-12"><a href="#cb38-12" aria-hidden="true" tabindex="-1"></a>  new_df <span class="ot">&lt;-</span> sampleScore.df[, <span class="fu">c</span>(sampleScore1, sampleScore2)]</span>
+<span id="cb38-13"><a href="#cb38-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">colnames</span>(new_df)[<span class="dv">1</span>] <span class="ot">&lt;-</span> <span class="st">"sampleScore1"</span></span>
+<span id="cb38-14"><a href="#cb38-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">colnames</span>(new_df)[<span class="dv">2</span>] <span class="ot">&lt;-</span> <span class="st">"sampleScore2"</span></span>
+<span id="cb38-15"><a href="#cb38-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-16"><a href="#cb38-16" aria-hidden="true" tabindex="-1"></a>  new_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(new_df, factor.df)</span>
+<span id="cb38-17"><a href="#cb38-17" aria-hidden="true" tabindex="-1"></a>  plot_data <span class="ot">&lt;-</span> new_df[<span class="fu">which</span>(<span class="sc">!</span><span class="fu">is.na</span>(<span class="fu">factor</span>(new_df[[phenotype]]))),] <span class="co">#Filter out rows of the phenotype that are N/A</span></span>
+<span id="cb38-18"><a href="#cb38-18" aria-hidden="true" tabindex="-1"></a>  <span class="co">#print(plot_data[[phenotype]])</span></span>
+<span id="cb38-19"><a href="#cb38-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-20"><a href="#cb38-20" aria-hidden="true" tabindex="-1"></a>  colors <span class="ot">&lt;-</span> <span class="fu">gg_color_hue</span>(<span class="fu">length</span>(<span class="fu">unique</span>(plot_data[[phenotype]]))) <span class="co"># Count number of factor levels excluding NA</span></span>
+<span id="cb38-21"><a href="#cb38-21" aria-hidden="true" tabindex="-1"></a>  colors.toplot <span class="ot">&lt;-</span> <span class="fu">c</span>(colors)</span>
+<span id="cb38-22"><a href="#cb38-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-23"><a href="#cb38-23" aria-hidden="true" tabindex="-1"></a>  pA <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(plot_data,</span>
+<span id="cb38-24"><a href="#cb38-24" aria-hidden="true" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">x =</span> sampleScore1, <span class="at">y =</span> sampleScore2, <span class="at">color =</span> plot_data[[phenotype]])) <span class="sc">+</span></span>
+<span id="cb38-25"><a href="#cb38-25" aria-hidden="true" tabindex="-1"></a>        <span class="fu">geom_point</span>() <span class="sc">+</span></span>
+<span id="cb38-26"><a href="#cb38-26" aria-hidden="true" tabindex="-1"></a>        <span class="fu">labs</span>(<span class="at">title =</span> graph_title) <span class="sc">+</span></span>
+<span id="cb38-27"><a href="#cb38-27" aria-hidden="true" tabindex="-1"></a>        <span class="fu">scale_color_manual</span>(<span class="at">values =</span> colors.toplot, <span class="at">name =</span> legend_title) <span class="sc">+</span></span>
+<span id="cb38-28"><a href="#cb38-28" aria-hidden="true" tabindex="-1"></a>        <span class="fu">theme_bw</span>() <span class="sc">+</span></span>
+<span id="cb38-29"><a href="#cb38-29" aria-hidden="true" tabindex="-1"></a>        <span class="fu">theme</span>(<span class="at">panel.grid.major =</span> <span class="fu">element_blank</span>(),</span>
+<span id="cb38-30"><a href="#cb38-30" aria-hidden="true" tabindex="-1"></a>        <span class="at">panel.grid.minor =</span> <span class="fu">element_blank</span>()) <span class="sc">+</span></span>
+<span id="cb38-31"><a href="#cb38-31" aria-hidden="true" tabindex="-1"></a>        <span class="fu">geom_hline</span>(<span class="at">yintercept =</span> <span class="dv">0</span>, <span class="at">linetype =</span> <span class="st">'dashed'</span>) <span class="sc">+</span></span>
+<span id="cb38-32"><a href="#cb38-32" aria-hidden="true" tabindex="-1"></a>        <span class="fu">geom_vline</span>(<span class="at">xintercept =</span> <span class="dv">0</span>, <span class="at">linetype =</span> <span class="st">'dashed'</span>) <span class="sc">+</span></span>
+<span id="cb38-33"><a href="#cb38-33" aria-hidden="true" tabindex="-1"></a>        <span class="fu">xlab</span>(sampleScore1) <span class="sc">+</span> <span class="fu">ylab</span>(sampleScore2)</span>
+<span id="cb38-34"><a href="#cb38-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb38-35"><a href="#cb38-35" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(pA)</span>
+<span id="cb38-36"><a href="#cb38-36" aria-hidden="true" tabindex="-1"></a>}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a><span class="fu">graph_categorical</span>(<span class="dv">834</span>, <span class="dv">833</span>, new_factorTb, sampleScore_sub,</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"</span>, </span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>                  <span class="st">"Score Plot for Microsatellite Status"</span>, <span class="st">"Microsatellite Status"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="TCGA-COAD-Microsatellite-Status-EDA_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="fu">graph_categorical</span>(<span class="dv">834</span>, <span class="dv">188</span>, binary_factor_2, sampleScore_sub, <span class="st">'patient.braf_gene_analysis_result'</span>, <span class="st">'BRAF Gene Analysis Result'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] "Phenotype is not in provided factor dataframe"</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: Use of `plot_data[[phenotype]]` is discouraged.
+ℹ Use `.data[[phenotype]]` instead.</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="TCGA-COAD-Microsatellite-Status-EDA_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">drawWordcloud</span>(RAVmodel, <span class="dv">1172</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="TCGA-COAD-Microsatellite-Status-EDA_files/figure-html/unnamed-chunk-20-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

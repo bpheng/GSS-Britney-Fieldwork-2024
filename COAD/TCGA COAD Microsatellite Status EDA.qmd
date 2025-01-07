@@ -192,6 +192,7 @@ single_factor <- factorTb[,single_factor_ind]
 ```
 
 # Calculate Wilcoxon Test for Binomial Factor Variables
+
 ```{r}
 #Remove factors without enough y-observations
 
@@ -246,6 +247,7 @@ wtest_coad_pvalue_2 <- wtest_coad_pvalue[-batch_char_ind,]
 ```{r figures-side-4, fig.show="hold", out.width="50%"}
 heatmap(as.matrix(wtest_coad_wvalue_2), main = 'COAD Wilcoxon Test Cancer Binomial')
 ```
+
 ```{r}
 #Only view w-values with significant p-value (<0.05)
 wtest_coad_sig_wvalue <- wilcox_test_res
@@ -265,6 +267,7 @@ batch_char_ind_2 <- grep('analyte|analytes|portion|procurement|aliquot|uuid|barc
                   rownames(wtest_coad_sig_wvalue))
 wtest_coad_sig_wvalue <- wtest_coad_sig_wvalue[-batch_char_ind_2, ]
 ```
+
 ```{r}
 for (i in seq_len(ncol(sampleScore_sub))) {
   print(colnames(sampleScore_sub)[i])
@@ -322,7 +325,6 @@ for (i in seq_len(ncol(sampleScore_sub))) {
 
 
 ```
-
 
 ```{r figures-side-5, fig.show="hold", out.width="50%"}
 heatmap(as.matrix(kwtest_coad_wvalue), main = 'COAD Kruskal-Wallis Test Cancer Multinomial')

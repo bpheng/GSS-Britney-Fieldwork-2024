@@ -68,6 +68,7 @@ coad_rna_cancer <- getWithColData(coad2,
                                   mode = 'append')
 
 assay(coad_rna_cancer) <- log2(assay(coad_rna_cancer) + 1)
+saveRDS(coad_rna_cancer, file="/Users/bpheng/GSS-Britney-Fieldwork-2024/data/coad_rna_cancer.rds")
 coad_cancer_meta <- colData(coad_rna_cancer)
 
 
@@ -77,6 +78,7 @@ coad_rna_normal <- getWithColData(coad2,
                                   mode = 'append')
 
 assay(coad_rna_normal) <- log2(assay(coad_rna_normal) + 1)
+saveRDS(coad_rna_normal, file="/Users/bpheng/GSS-Britney-Fieldwork-2024/data/coad_rna_normal.rds")
 coad_normal_meta <- colData(coad_rna_normal)
 ```
 

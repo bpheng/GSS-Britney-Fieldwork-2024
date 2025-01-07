@@ -69,6 +69,7 @@ levels(factorTb$patient.microsatellite_instability_test_results.microsatellite_i
 validated_RAVs <- c("RAV61", "RAV64", "RAV188", "RAV190", "RAV192", 
                     "RAV220", "RAV324", "RAV438", "RAV833", "RAV834", 
                     "RAV868", "RAV1008", "RAV1575")
+
 target_attr <- "patient.microsatellite_instability_test_results.microsatellite_instability_test_result.mononucleotide_and_dinucleotide_marker_panel_analysis_status"
 
 labels <- factorTb[[target_attr]]
@@ -132,17 +133,12 @@ new_ucec_data <- ucec_data[nonNALabels,]
 new_labels <- labels[nonNALabels]
 new_ucec_data$msi <- new_labels
 
+
 ```
 
 ```{r}
 ucec.prediction <- predict(rf, new_ucec_data)
-ucec_matrix <- confusionMatrix(ucec.prediction, new_ucec_data$msi)
-ucec_df <- ucec_matrix$table
-
-# Plotting the mosaic plot
-mosaic(ucec_df,legend=FALSE,
-       main = "UCEC Confusion Matrix Mosaic Plot")
-
+confusionMatrix(ucec.prediction, new_ucec_data$msi)
 
 ```
 

@@ -44,13 +44,14 @@ ucec <- curatedTCGAData(diseaseCode = 'UCEC',
                         dry.run = FALSE)
 ```
 
+# UCEC All Samples Data
 ```{r}
 ## UCEC RNAseq
 ucec_rna <- getWithColData(ucec,
                            'UCEC_RNASeq2Gene-20160128', # RSEM TPM gene expression values
                            mode = 'append')
 
-assay(ucec_rna) <- log2(assay(ucec_rna) + 1) # log-transformed
+assay(ucec_rna) <- log2(assay(ucec_rna) + 1)
 
 ## UCEC metadata
 ucec_meta <- colData(ucec_rna)
@@ -68,6 +69,7 @@ ucec_rna_cancer <- getWithColData(ucec2,
                                   mode = 'append')
 
 assay(ucec_rna_cancer) <- log2(assay(ucec_rna_cancer) + 1)
+saveRDS(ucec_rna_cancer, file="/Users/bpheng/GSS-Britney-Fieldwork-2024/data/ucec_rna_cancer.rds")
 ucec_cancer_meta <- colData(ucec_rna_cancer)
 
 
@@ -77,6 +79,7 @@ ucec_rna_normal <- getWithColData(ucec2,
                                   mode = 'append')
 
 assay(ucec_rna_normal) <- log2(assay(ucec_rna_normal) + 1)
+saveRDS(ucec_rna_normal, file="/Users/bpheng/GSS-Britney-Fieldwork-2024/data/ucec_rna_normal.rds")
 ucec_normal_meta <- colData(ucec_rna_normal)
 ```
 
@@ -159,7 +162,7 @@ write.csv(ucec_normal_sampleScore_sub , "data/ucec_normal_sampleScore.csv")
 ## Categorical and Numeric Variables
 ## Based on variable types
 ```{r}
-## Separate COAL All into two subsets: 
+## Separate UCEC All into two subsets: 
 charcTb <- ucec_all[, sapply(ucec_all@listData, class) == 'character']
 numTb <- ucec_all[, sapply(ucec_all@listData, class) %in% c('numeric', 'integer')]
 write.csv(charcTb, "data/ucec_all_char.csv", row.names = TRUE)
